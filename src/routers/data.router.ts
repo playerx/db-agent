@@ -23,7 +23,9 @@ router.get("/:collection", async (req, res) => {
     return res.status(400).json({ error: "Invalid skip parameter" })
   }
   if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
-    return res.status(400).json({ error: "Invalid limit parameter (must be between 1 and 100)" })
+    return res
+      .status(400)
+      .json({ error: "Invalid limit parameter (must be between 1 and 100)" })
   }
 
   const result = await dataService.getDocuments(
@@ -63,7 +65,7 @@ router.delete("/:collection/:id", async (req, res) => {
 })
 
 // Execute prompt using AI agent
-router.post("/execute-prompt", async (req, res) => {
+router.post("/prompt", async (req, res) => {
   const { prompt } = req.body
   const result = await dataService.executePrompt(prompt)
 

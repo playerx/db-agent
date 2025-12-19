@@ -1,6 +1,7 @@
 import "dotenv/config"
 import express from "express"
 import dataRouter from "./routers/data.router.ts"
+import eventRouter from "./routers/event.router.ts"
 import { errorHandler } from "./routers/middlewares/errorHandler.middleware.ts"
 
 const app = express()
@@ -11,6 +12,7 @@ app.use(express.json())
 
 // Routes
 app.use("/data", dataRouter)
+app.use("/events", eventRouter)
 
 // Error handler (must be last)
 app.use(errorHandler)
