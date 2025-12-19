@@ -11,7 +11,6 @@ router.get("/collections", async (_req, res) => {
 
 // Execute prompt using AI agent
 router.get("/prompt", async (req, res) => {
-  console.log(1)
   const { prompt } = req.query
 
   // Set up Server-Sent Events (SSE) for streaming
@@ -19,7 +18,6 @@ router.get("/prompt", async (req, res) => {
   res.setHeader("Cache-Control", "no-cache")
   res.setHeader("Connection", "keep-alive")
 
-  console.log({ prompt })
   try {
     const result = await dataService.executePrompt(
       prompt!.toString(),
