@@ -9,6 +9,50 @@ class DataService {
     return collections.map((col) => col.name)
   }
 
+  async getDocuments(
+    collection: string,
+    skip: number = 0,
+    limit: number = 10,
+    searchParams: Record<string, any> = {}
+  ) {
+    // Build query object from search parameters
+    const query: Record<string, any> = {}
+
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (value !== undefined && value !== null && value !== "") {
+        // If the value looks like an ObjectId, try to match it
+        if (key === "_id" && ObjectId.isValid(value as string)) {
+          query[key] = new ObjectId(value as string)
+        } else if (typeof value === "string") {
+          // Use case-insensitive regex for string fields
+          query[key] = { $regex: value, $options: "i" }
+        } else {
+          // For other types, use exact match
+          query[key] = value
+        }
+      }
+    }
+
+    const documents = await mongoDb
+      .collection(collection)
+      .find(query)
+      .skip(skip)
+      .limit(limit)
+      .toArray()
+
+    const total = await mongoDb.collection(collection).countDocuments(query)
+
+    return {
+      data: documents,
+      pagination: {
+        skip,
+        limit,
+        total,
+        hasMore: skip + limit < total,
+      },
+    }
+  }
+
   async getDocumentById(collection: string, id: string) {
     if (!ObjectId.isValid(id)) {
       throw new AppError("Invalid document ID format")
