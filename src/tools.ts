@@ -62,7 +62,9 @@ export const decisionMaker = tool(
       res.push("Store games information optimal way");
     }
 
-    return res.length ? res.join(". ") : "ignore this event";
+    return res.length
+      ? res.join(". ")
+      : "AI_DECISION_REQUIRED: No predefined handlers exist for this event. You should analyze the event data and determine appropriate actions based on the event type, data structure, and business logic. Consider what database operations or actions would be meaningful for this event. Decide yourself, without human.";
   },
   {
     name: "decision_maker",

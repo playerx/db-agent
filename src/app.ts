@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { createAgent } from "langchain";
+import { db } from "./db.ts";
 import { decisionMaker, getSampleDoc, runQuery } from "./tools.ts";
 
 const mongoAgent = createAgent({
@@ -14,6 +15,7 @@ const mongoAgent = createAgent({
 const run = async (prompt: string) => {
   let i = 0;
   let res = "";
+  const debugLog: { index: number; step: string; content: string }[] = [];
 
   for await (const chunk of await mongoAgent.stream(
     {
@@ -40,6 +42,12 @@ const run = async (prompt: string) => {
       console.log(++i, step);
     }
 
+    debugLog.push({
+      index: i,
+      step,
+      content: content.messages[0].content.toString(),
+    });
+
     if (
       (content.messages[0].response_metadata as any)?.stop_reason === "end_turn"
     ) {
@@ -48,20 +56,56 @@ const run = async (prompt: string) => {
     }
   }
 
+  db.eventLog.insertOne({
+    prompt,
+    result: res,
+    timestamp: new Date(),
+    debug: {
+      messages: debugLog,
+    },
+  });
   // console.log("final", res.messages);
 
   return res;
 };
 
+// const res = await run(
+//   `GAME_FINISHED event:
+//   {
+//     game: "g1",
+//     users: [
+//         { user: "u1", score: 11.23 },
+//         { user: "u2", score: 32 },
+//         { user: "u3", score: 32 },
+//         { user: "u4", score: 24.4 }
+//     ]
+//   }.`
+// );
+
+// const res = await run(
+//   `TOURNAMENT_STARTED event:
+//   {
+//     game: "g1",
+//     tournament: "t1",
+//     users: [
+//         { user: "u1", customData: 1 },
+//         { user: "u2", customData: 2  },
+//         { user: "u3", customData: 3  },
+//         { user: "u4", customData: 2  }
+//     ]
+//   }.`
+// );
+
 const res = await run(
-  `GAME_FINISHED event:
+  `TOURNAMENT_FINISHED event:
   {
     game: "g1",
+    tournament: "t1",
     users: [
-        { user: "u1", score: 11.23 },
-        { user: "u2", score: 32 },
-        { user: "u3", score: 32 },
-        { user: "u4", score: 24.4 }
+        { user: "u1", customData: 1, score: 23, },
+        { user: "u2", customData: 2, score: 1  },
+        { user: "u3", customData: 3, score: 11  },
+        { user: "u4", customData: 2, score: 5523  }
     ]
   }.`
 );

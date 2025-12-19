@@ -8,3 +8,22 @@ if (!MONGO_CONNECTION_STRING) {
 const client = await new MongoClient(MONGO_CONNECTION_STRING).connect();
 
 export const mongoDb = client.db();
+
+export const db = {
+  eventLog: client
+    .db(mongoDb.databaseName + "_manager")
+    .collection<EventLogDb>("eventLog"),
+};
+
+export type EventLogDb = {
+  prompt: string;
+  result: string;
+  timestamp: Date;
+  debug?: {
+    messages: {
+      index: number;
+      step: string;
+      content: string;
+    }[];
+  };
+};
