@@ -22,7 +22,7 @@ router.get("/:collection", async (req, res) => {
   if (isNaN(skipNum) || skipNum < 0) {
     return res.status(400).json({ error: "Invalid skip parameter" })
   }
-  if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+  if (isNaN(limitNum) || limitNum < 0 || limitNum > 100) {
     return res
       .status(400)
       .json({ error: "Invalid limit parameter (must be between 1 and 100)" })

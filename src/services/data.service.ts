@@ -33,12 +33,14 @@ class DataService {
       }
     }
 
-    const documents = await mongoDb
-      .collection(collection)
-      .find(query)
-      .skip(skip)
-      .limit(limit)
-      .toArray()
+    const documents = limit
+      ? await mongoDb
+          .collection(collection)
+          .find(query)
+          .skip(skip)
+          .limit(limit)
+          .toArray()
+      : []
 
     const total = await mongoDb.collection(collection).countDocuments(query)
 
