@@ -3,9 +3,9 @@ import { AppError } from "../common/appError.ts"
 import { db } from "../db.ts"
 
 class EventService {
-  async listEvents(skip: number = 0, limit: number = 10) {
+  async listEvents(skip: number = 0, limit: number = 10, showDebug = false) {
     const events = await db.eventLog
-      .find()
+      .find({}, { projection: showDebug ? undefined : { debug: 0 } })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)

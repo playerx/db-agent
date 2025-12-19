@@ -5,11 +5,12 @@ const router = Router()
 
 // List all events with pagination
 router.get("/", async (req, res) => {
-  const { skip, limit } = req.query
+  const { skip, limit, debug } = req.query
 
   // Parse pagination parameters
   const skipNum = skip ? parseInt(skip as string, 10) : 0
   const limitNum = limit ? parseInt(limit as string, 10) : 10
+  const showDebug = debug != undefined
 
   // Validate pagination parameters
   if (isNaN(skipNum) || skipNum < 0) {
@@ -21,7 +22,13 @@ router.get("/", async (req, res) => {
       .json({ error: "Invalid limit parameter (must be between 1 and 100)" })
   }
 
-  const result = await eventService.listEvents(skipNum, limitNum)
+  const result = await eventService.listEvents(skipNum, limitNum, showDebug)
+
+  // By default, only return events array without debug data
+  if (!showDebug) {
+    return res.json(result.events)
+  }
+
   res.json(result)
 })
 
