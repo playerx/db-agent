@@ -9,6 +9,42 @@ router.get("/collections", async (_req, res) => {
   res.json({ collections: collectionNames })
 })
 
+// Execute prompt using AI agent
+router.get("/prompt", async (req, res) => {
+  console.log(1)
+  const { prompt } = req.query
+
+  // Set up Server-Sent Events (SSE) for streaming
+  res.setHeader("Content-Type", "text/event-stream")
+  res.setHeader("Cache-Control", "no-cache")
+  res.setHeader("Connection", "keep-alive")
+
+  console.log({ prompt })
+  try {
+    const result = await dataService.executePrompt(
+      prompt!.toString(),
+      (step, content) => {
+        // Stream each update to the client
+        res.write(`event: update\n`)
+        res.write(`data: ${JSON.stringify({ step, content })}\n\n`)
+      }
+    )
+
+    // Send final result
+    res.write(`event: complete\n`)
+    res.write(`data: ${JSON.stringify(result)}\n\n`)
+    res.end()
+  } catch (error) {
+    res.write(`event: error\n`)
+    res.write(
+      `data: ${JSON.stringify({
+        error: error instanceof Error ? error.message : "Unknown error",
+      })}\n\n`
+    )
+    res.end()
+  }
+})
+
 // Get documents from collection with pagination and search
 router.get("/:collection", async (req, res) => {
   const { collection } = req.params
@@ -61,14 +97,6 @@ router.put("/:collection/:id", async (req, res) => {
 router.delete("/:collection/:id", async (req, res) => {
   const { collection, id } = req.params
   const result = await dataService.deleteDocumentById(collection, id)
-  res.json(result)
-})
-
-// Execute prompt using AI agent
-router.post("/prompt", async (req, res) => {
-  const { prompt } = req.body
-  const result = await dataService.executePrompt(prompt)
-
   res.json(result)
 })
 

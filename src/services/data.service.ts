@@ -132,7 +132,10 @@ class DataService {
     return { success: true, deletedCount: result.deletedCount }
   }
 
-  async executePrompt(prompt: string) {
+  async executePrompt(
+    prompt: string,
+    cb?: (step: string, content: string) => void
+  ) {
     if (!prompt || typeof prompt !== "string") {
       throw new AppError("Prompt is required and must be a string")
     }
@@ -149,11 +152,21 @@ class DataService {
     )) {
       const [step, content] = Object.entries(chunk)[0]
 
+      const contentData =
+        typeof content.messages[0].content === "object"
+          ? JSON.stringify(content.messages[0].content)
+          : content.messages[0].content.toString()
+
       debugLog.push({
         index: ++i,
         step,
-        content: content.messages[0].content.toString(),
+        content: contentData,
       })
+
+      cb?.(
+        step === "tools" ? `${content.messages[0].name} (tool)` : step,
+        contentData
+      )
 
       if (
         (content.messages[0].response_metadata as any)?.stop_reason ===
