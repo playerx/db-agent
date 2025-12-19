@@ -6,6 +6,7 @@
   "dependencies": {
     "@langchain/anthropic": "^1.3.1",
     "@langchain/core": "^1.1.6",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "langchain": "^1.2.1",
@@ -15,6 +16,8 @@
     "semi": false
   },
   "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.3"
   }

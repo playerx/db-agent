@@ -1,5 +1,6 @@
 import "dotenv/config"
 import express from "express"
+import cors from "cors"
 import dataRouter from "./routers/data.router.ts"
 import eventRouter from "./routers/event.router.ts"
 import { errorHandler } from "./routers/middlewares/errorHandler.middleware.ts"
@@ -8,6 +9,7 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 // Middleware
+app.use(cors())
 app.use(express.json())
 
 // Routes
