@@ -43,6 +43,18 @@ router.get("/prompt", async (req, res) => {
   }
 })
 
+router.post("/queries", async (req, res) => {
+  const queries = req.body
+
+  if (!queries?.length) {
+    return
+  }
+
+  const result = await dataService.runQueries(queries)
+
+  res.json(result)
+})
+
 // Get documents from collection with pagination and search
 router.get("/:collection/count", async (req, res) => {
   const { collection } = req.params

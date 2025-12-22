@@ -4,6 +4,7 @@ import { createQuery } from "odata-v4-mongodb"
 import { mongoAgent } from "../agent/mongoAgent.ts"
 import { runQueryCache } from "../agent/tools.ts"
 import { AppError } from "../common/appError.ts"
+import { createDbProxy, run } from "../common/helpers.ts"
 import { db, mongoDb } from "../db.ts"
 
 class DataService {
@@ -200,6 +201,14 @@ class DataService {
       result,
       debug: debugLog,
     }
+  }
+
+  async runQueries(queries: string[]) {
+    const res = await Promise.all(
+      queries.map((x) => run(x, { db: createDbProxy(mongoDb) }))
+    )
+
+    return res
   }
 }
 
