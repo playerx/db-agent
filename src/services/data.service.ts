@@ -208,7 +208,7 @@ class DataService {
       const res = await run(x, { db: createDbProxy(mongoDb) })
 
       if (x.includes(".findOne(")) {
-        return EJSON.serialize(res)
+        return [EJSON.serialize(res)]
       }
 
       if (x.includes(".find(") && x.includes(".toArray(")) {
