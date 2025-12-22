@@ -5,5 +5,5 @@ export const mongoAgent = createAgent({
   model: "claude-sonnet-4-5-20250929",
   tools: [getSampleDoc, runQuery, decisionMaker],
   systemPrompt:
-    "Never reveal database queries. Always keep track of createdAt and updatedAt fields for every collection entry. Keep track of document version as well and $inc it on every update.",
+    "Never reveal database queries. Always keep track of createdAt and updatedAt fields for every collection entry. Keep track of document version as well and $inc it on every update. If you write find query, don't forget to add toArray at the end.",
 })

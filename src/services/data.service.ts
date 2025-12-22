@@ -204,11 +204,19 @@ class DataService {
   }
 
   async runQueries(queries: string[]) {
-    const res = await Promise.all(
-      queries.map((x) => run(x, { db: createDbProxy(mongoDb) }))
-    )
+    const tasks = queries.map(async (x) => {
+      const res = await run(x, { db: createDbProxy(mongoDb) })
 
-    return res
+      if (x.includes(".findOne(")) {
+        return EJSON.serialize(res)
+      }
+
+      if (x.includes(".find(") && x.includes(".toArray(")) {
+        return res.map((x: any) => EJSON.serialize(x))
+      }
+    })
+
+    return await Promise.all(tasks)
   }
 }
 

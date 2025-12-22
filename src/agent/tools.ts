@@ -26,8 +26,6 @@ export const runQueryCache = new Map<string, string[]>()
 export const runQuery = tool(
   async (input, runtime) => {
     try {
-      console.log(runtime.context.referenceId, input.mongoQuery)
-
       const items = runQueryCache.get(runtime.context.referenceId) ?? []
       items.push(input.mongoQuery)
       runQueryCache.set(runtime.context.referenceId, items)
