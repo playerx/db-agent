@@ -1,0 +1,611 @@
+openapi: 3.0.3
+info:
+  title: DB Agent API
+  description: |
+    A MongoDB database agent API with AI-powered natural language query capabilities.
+
+    This API provides CRUD operations for MongoDB collections and includes an AI agent
+    that can execute natural language prompts to query and manipulate data. All data
+    endpoints support OData query protocol for filtering, sorting, and pagination.
+  version: 1.0.0
+  contact:
+    name: API Support
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://your-production-url.com
+    description: Production server
+
+tags:
+  - name: Data
+    description: MongoDB collection operations with OData support
+  - name: Events
+    description: Event logging and retrieval
+
+paths:
+  /data/collections:
+    get:
+      tags:
+        - Data
+      summary: List all collections
+      description: Returns a list of all available MongoDB collections in the database
+      operationId: listCollections
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      type: string
+                    example: ["users", "products", "orders"]
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /data/prompt:
+    get:
+      tags:
+        - Data
+      summary: Execute AI agent prompt
+      description: |
+        Execute a natural language query or operation using the AI agent.
+        This endpoint streams real-time updates using Server-Sent Events (SSE).
+
+        The AI agent can understand and execute complex database operations,
+        aggregations, and queries expressed in natural language.
+      operationId: executePrompt
+      parameters:
+        - name: prompt
+          in: query
+          required: true
+          description: Natural language prompt for the AI agent
+          schema:
+            type: string
+          examples:
+            countUsers:
+              value: "How many users are there?"
+              summary: Count documents
+            recentOrders:
+              value: "Show me all orders from the last 30 days"
+              summary: Date-based query
+            aggregation:
+              value: "What is the average order value by customer?"
+              summary: Aggregation query
+      responses:
+        '200':
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE stream with events:
+                  - 'update': Progress updates with step and content
+                  - 'complete': Final result
+                  - 'error': Error information
+              examples:
+                update:
+                  value: |
+                    event: update
+                    data: {"step":"thinking","content":"I need to query the users collection..."}
+                complete:
+                  value: |
+                    event: complete
+                    data: {"result":"Found 42 active users","debug":[...]}
+                error:
+                  value: |
+                    event: error
+                    data: {"error":"Error message here"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /data/{collection}:
+    get:
+      tags:
+        - Data
+      summary: Get documents from collection
+      description: |
+        Fetch documents from a specific collection with OData query support.
+
+        Supports OData query parameters:
+        - $filter: Filter results using OData filter expressions
+        - $select: Select specific fields to return
+        - $orderby: Sort results by field(s)
+        - $top: Limit number of results
+        - $skip: Skip number of results
+      operationId: getDocuments
+      parameters:
+        - $ref: '#/components/parameters/CollectionName'
+        - name: $filter
+          in: query
+          description: OData filter expression (e.g., "status eq 'active'")
+          schema:
+            type: string
+          examples:
+            simple:
+              value: "status eq 'active'"
+              summary: Simple filter
+            and:
+              value: "status eq 'active' and age gt 18"
+              summary: Multiple conditions with AND
+            or:
+              value: "status eq 'active' or status eq 'pending'"
+              summary: Multiple conditions with OR
+        - name: $select
+          in: query
+          description: Comma-separated list of fields to return
+          schema:
+            type: string
+          example: "name,email,status"
+        - name: $orderby
+          in: query
+          description: Field(s) to sort by with optional direction (asc/desc)
+          schema:
+            type: string
+          example: "createdAt desc"
+        - name: $top
+          in: query
+          description: Maximum number of results to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 10
+        - name: $skip
+          in: query
+          description: Number of results to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+              example:
+                data:
+                  - _id: "507f1f77bcf86cd799439011"
+                    name: "John Doe"
+                    status: "active"
+                pagination:
+                  skip: 0
+                  limit: 10
+                  total: 42
+                  hasMore: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /data/{collection}/count:
+    get:
+      tags:
+        - Data
+      summary: Get document count
+      description: |
+        Get the total count of documents in a collection, with optional OData filters.
+        Supports the $filter OData query parameter for conditional counting.
+      operationId: getDocumentCount
+      parameters:
+        - $ref: '#/components/parameters/CollectionName'
+        - name: $filter
+          in: query
+          description: OData filter expression
+          schema:
+            type: string
+          examples:
+            simple:
+              value: "status eq 'active'"
+              summary: Count active documents
+            complex:
+              value: "status eq 'active' and age gt 18"
+              summary: Count with multiple conditions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: Number of documents matching the criteria
+                example:
+                  count: 42
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /data/{collection}/{id}:
+    get:
+      tags:
+        - Data
+      summary: Get document by ID
+      description: Retrieve a specific document by its MongoDB ObjectId
+      operationId: getDocumentById
+      parameters:
+        - $ref: '#/components/parameters/CollectionName'
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              example:
+                _id: "507f1f77bcf86cd799439011"
+                name: "John Doe"
+                email: "john@example.com"
+                status: "active"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Data
+      summary: Update document by ID
+      description: |
+        Update fields in a specific document. Only the fields provided in the
+        request body will be updated. This operation creates an UPDATE event log entry.
+      operationId: updateDocumentById
+      parameters:
+        - $ref: '#/components/parameters/CollectionName'
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        description: Fields to update
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            examples:
+              singleField:
+                summary: Update single field
+                value:
+                  lastLogin: "2025-12-22T10:30:00Z"
+              multipleFields:
+                summary: Update multiple fields
+                value:
+                  name: "Jane Doe"
+                  status: "inactive"
+      responses:
+        '200':
+          description: Document updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              example:
+                _id: "507f1f77bcf86cd799439011"
+                name: "Jane Doe"
+                email: "john@example.com"
+                status: "inactive"
+                lastLogin: "2025-12-22T10:30:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Data
+      summary: Delete document by ID
+      description: |
+        Delete a specific document from a collection.
+        This operation creates a DELETE event log entry.
+      operationId: deleteDocumentById
+      parameters:
+        - $ref: '#/components/parameters/CollectionName'
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Document deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  deletedCount:
+                    type: integer
+                example:
+                  success: true
+                  deletedCount: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /events:
+    get:
+      tags:
+        - Events
+      summary: List all events
+      description: |
+        Get logged events (UPDATE, DELETE, PROMPT operations) with pagination.
+        By default, returns only the events array. Use the debug parameter to
+        include pagination metadata and full debug information.
+      operationId: listEvents
+      parameters:
+        - name: skip
+          in: query
+          description: Number of events to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          description: Maximum number of events to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: debug
+          in: query
+          description: Include pagination metadata and debug information
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                    description: Events array (when debug is not set)
+                  - type: object
+                    description: Events with pagination (when debug is set)
+                    properties:
+                      events:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Event'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+              examples:
+                withoutDebug:
+                  summary: Without debug (default)
+                  value:
+                    - _id: "507f1f77bcf86cd799439012"
+                      type: "UPDATE"
+                      collection: "users"
+                      documentId: "507f1f77bcf86cd799439011"
+                      timestamp: "2025-12-22T10:30:00Z"
+                      data:
+                        name: "Jane Doe"
+                    - _id: "507f1f77bcf86cd799439013"
+                      type: "DELETE"
+                      collection: "users"
+                      documentId: "507f1f77bcf86cd799439014"
+                      timestamp: "2025-12-22T10:35:00Z"
+                withDebug:
+                  summary: With debug parameter
+                  value:
+                    events:
+                      - _id: "507f1f77bcf86cd799439015"
+                        type: "PROMPT"
+                        timestamp: "2025-12-22T10:40:00Z"
+                        prompt: "Find all active users"
+                        result: "Found 42 active users"
+                        debug:
+                          - index: 0
+                            step: "thinking"
+                            content: "I need to query..."
+                    pagination:
+                      skip: 0
+                      limit: 10
+                      total: 1
+                      hasMore: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /events/{id}:
+    delete:
+      tags:
+        - Events
+      summary: Delete event by ID
+      description: Delete a specific event log entry
+      operationId: deleteEventById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Event ID (MongoDB ObjectId)
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      responses:
+        '200':
+          description: Event deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                example:
+                  success: true
+                  message: "Event deleted successfully"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Event not found"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    CollectionName:
+      name: collection
+      in: path
+      required: true
+      description: MongoDB collection name
+      schema:
+        type: string
+      example: "users"
+
+    DocumentId:
+      name: id
+      in: path
+      required: true
+      description: Document ID (MongoDB ObjectId)
+      schema:
+        type: string
+        pattern: '^[0-9a-fA-F]{24}$'
+      example: "507f1f77bcf86cd799439011"
+
+  schemas:
+    Pagination:
+      type: object
+      properties:
+        skip:
+          type: integer
+          description: Number of documents skipped
+        limit:
+          type: integer
+          description: Maximum number of documents returned
+        total:
+          type: integer
+          description: Total number of documents matching the query
+        hasMore:
+          type: boolean
+          description: Whether more documents are available
+
+    Event:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Event ID
+        type:
+          type: string
+          enum: [UPDATE, DELETE, PROMPT]
+          description: Type of event
+        collection:
+          type: string
+          description: Collection name (for UPDATE/DELETE events)
+        documentId:
+          type: string
+          description: Document ID (for UPDATE/DELETE events)
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        data:
+          type: object
+          additionalProperties: true
+          description: Update data (for UPDATE events)
+        prompt:
+          type: string
+          description: AI prompt text (for PROMPT events)
+        result:
+          type: string
+          description: AI result (for PROMPT events)
+        debug:
+          type: array
+          description: Debug trace (for PROMPT events when debug is enabled)
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              step:
+                type: string
+              content:
+                type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidId:
+              summary: Invalid ID format
+              value:
+                error: "Invalid ID format"
+            invalidPagination:
+              summary: Invalid pagination
+              value:
+                error: "Invalid skip parameter"
+            missingPrompt:
+              summary: Missing required field
+              value:
+                error: "Prompt is required"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Document not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
+            details: "Error message details"

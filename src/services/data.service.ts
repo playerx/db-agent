@@ -1,6 +1,7 @@
+import { EJSON } from "bson"
 import { ObjectId } from "mongodb"
 import { createQuery } from "odata-v4-mongodb"
-import { mongoAgent } from "../agent/agent.ts"
+import { mongoAgent } from "../agent/mongoAgent.ts"
 import { AppError } from "../common/appError.ts"
 import { db, mongoDb } from "../db.ts"
 
@@ -28,7 +29,7 @@ class DataService {
       .toArray()
 
     return {
-      data: documents,
+      data: documents.map((x) => EJSON.serialize(x)),
       query: {
         filters,
         projection,
@@ -49,39 +50,45 @@ class DataService {
   }
 
   async getDocumentById(collection: string, id: string) {
-    if (!ObjectId.isValid(id)) {
-      throw new AppError("Invalid document ID format")
+    let itemId: any = id
+
+    if (id.length === 24) {
+      try {
+        itemId = new ObjectId(id)
+      } catch {}
     }
 
     const document = await mongoDb
       .collection(collection)
-      .findOne({ _id: new ObjectId(id) })
+      .findOne({ _id: itemId })
 
     if (!document) {
       throw new AppError("Document not found")
     }
 
-    return document
+    return EJSON.serialize(document)
   }
 
   async updateDocumentById(
     collection: string,
     id: string,
-    updateData: Record<string, any>
+    bsonData: Record<string, unknown>
   ) {
-    if (!ObjectId.isValid(id)) {
-      throw new AppError("Invalid document ID format")
+    let itemId: any = id
+
+    if (id.length === 24) {
+      try {
+        itemId = new ObjectId(id)
+      } catch {}
     }
 
-    // Remove _id from update data if present
-    const cleanedData = { ...updateData }
-    delete cleanedData._id
+    const { _id, ...updateData } = EJSON.deserialize(bsonData)
 
     const result = await mongoDb
       .collection(collection)
       .findOneAndUpdate(
-        { _id: new ObjectId(id) },
-        { $set: cleanedData },
+        { _id: itemId },
+        { $set: updateData },
         { returnDocument: "after" }
       )
 
@@ -92,23 +99,27 @@ class DataService {
     await db.eventLog.insertOne({
       type: "UPDATE",
       collection,
-      id: new ObjectId(id),
+      id: itemId,
       result,
       timestamp: new Date(),
-      data: cleanedData,
+      data: updateData,
     })
 
-    return result
+    return EJSON.serialize(result)
   }
 
   async deleteDocumentById(collection: string, id: string) {
-    if (!ObjectId.isValid(id)) {
-      throw new AppError("Invalid document ID format")
+    let itemId: any = id
+
+    if (id.length === 24) {
+      try {
+        itemId = new ObjectId(id)
+      } catch {}
     }
 
     const result = await mongoDb
       .collection(collection)
-      .deleteOne({ _id: new ObjectId(id) })
+      .deleteOne({ _id: itemId })
 
     if (result.deletedCount === 0) {
       throw new AppError("Document not found")

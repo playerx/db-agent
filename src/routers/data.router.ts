@@ -77,12 +77,10 @@ router.get("/:collection/:id", async (req, res) => {
 // Update document by ID
 router.put("/:collection/:id", async (req, res) => {
   const { collection, id } = req.params
-  const updateData = req.body
-  const result = await dataService.updateDocumentById(
-    collection,
-    id,
-    updateData
-  )
+
+  const ejson = req.body
+
+  const result = await dataService.updateDocumentById(collection, id, ejson)
   res.json(result)
 })
 

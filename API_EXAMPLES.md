@@ -29,28 +29,37 @@ curl -X GET http://localhost:3000/data/collections
 
 ### 2. Get Documents from Collection
 
-Fetch documents from a specific collection with pagination and optional search filters.
+Fetch documents from a specific collection with pagination and optional OData filters.
 
 **Basic Request (default pagination):**
 ```bash
 curl -X GET http://localhost:3000/data/users
 ```
 
-**With Pagination:**
+**With OData Pagination:**
 ```bash
-curl -X GET "http://localhost:3000/data/users?skip=0&limit=20"
+curl -X GET "http://localhost:3000/data/users?\$skip=0&\$top=20"
 ```
 
-**With Search Filters:**
+**With OData Filters:**
 ```bash
-# Search by exact match
-curl -X GET "http://localhost:3000/data/users?status=active"
+# Filter by status
+curl -X GET "http://localhost:3000/data/users?\$filter=status%20eq%20'active'"
 
-# Search with regex (case-insensitive)
-curl -X GET "http://localhost:3000/data/users?name=john"
+# Multiple conditions with AND
+curl -X GET "http://localhost:3000/data/users?\$filter=status%20eq%20'active'%20and%20age%20gt%2018"
 
-# Multiple filters
-curl -X GET "http://localhost:3000/data/users?status=active&role=admin&skip=10&limit=5"
+# Multiple conditions with OR
+curl -X GET "http://localhost:3000/data/users?\$filter=status%20eq%20'active'%20or%20status%20eq%20'pending'"
+
+# Select specific fields
+curl -X GET "http://localhost:3000/data/users?\$select=name,email,status"
+
+# Order by field
+curl -X GET "http://localhost:3000/data/users?\$orderby=createdAt%20desc"
+
+# Combine multiple OData parameters
+curl -X GET "http://localhost:3000/data/users?\$filter=status%20eq%20'active'&\$orderby=name%20asc&\$top=10&\$skip=0"
 ```
 
 **Response Example:**
@@ -72,9 +81,40 @@ curl -X GET "http://localhost:3000/data/users?status=active&role=admin&skip=10&l
 }
 ```
 
+**Note:** This endpoint supports OData query protocol. All OData parameters should be URL-encoded and prefixed with `$` (e.g., `$filter`, `$top`, `$skip`, `$select`, `$orderby`).
+
 ---
 
-### 3. Get Document by ID
+### 3. Get Document Count
+
+Get the total count of documents in a collection, with optional OData filters.
+
+**Basic Request:**
+```bash
+curl -X GET http://localhost:3000/data/users/count
+```
+
+**With OData Filters:**
+```bash
+# Filter by status
+curl -X GET "http://localhost:3000/data/users/count?\$filter=status%20eq%20'active'"
+
+# Multiple conditions
+curl -X GET "http://localhost:3000/data/users/count?\$filter=status%20eq%20'active'%20and%20age%20gt%2018"
+```
+
+**Response Example:**
+```json
+{
+  "count": 42
+}
+```
+
+**Note:** This endpoint supports OData query protocol for filtering. All OData parameters should be URL-encoded.
+
+---
+
+### 4. Get Document by ID
 
 Retrieve a specific document by its MongoDB ObjectId.
 
@@ -101,7 +141,7 @@ curl -X GET http://localhost:3000/data/users/507f1f77bcf86cd799439011
 
 ---
 
-### 4. Update Document by ID
+### 5. Update Document by ID
 
 Update fields in a specific document.
 
@@ -138,7 +178,7 @@ curl -X PUT http://localhost:3000/data/users/507f1f77bcf86cd799439011 \
 
 ---
 
-### 5. Delete Document by ID
+### 6. Delete Document by ID
 
 Delete a specific document from a collection.
 
@@ -158,7 +198,7 @@ curl -X DELETE http://localhost:3000/data/users/507f1f77bcf86cd799439011
 
 ---
 
-### 6. Execute AI Agent Prompt
+### 7. Execute AI Agent Prompt
 
 Execute a natural language query or operation using the AI agent. This endpoint streams real-time updates using Server-Sent Events (SSE).
 
@@ -412,10 +452,11 @@ curl -X GET http://localhost:3000/data/users \
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/data/collections` | List all collections |
-| GET | `/data/:collection` | Get documents with pagination |
+| GET | `/data/:collection` | Get documents with OData support |
+| GET | `/data/:collection/count` | Get document count with OData filters |
 | GET | `/data/:collection/:id` | Get document by ID |
 | PUT | `/data/:collection/:id` | Update document by ID |
 | DELETE | `/data/:collection/:id` | Delete document by ID |
 | GET | `/data/prompt` | Execute AI agent prompt (SSE streaming) |
-| GET | `/events` | List all events |
+| GET | `/events` | List all events with pagination |
 | DELETE | `/events/:id` | Delete event by ID |
