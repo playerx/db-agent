@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb"
+import { createQuery } from "odata-v4-mongodb"
 import { mongoAgent } from "../agent/agent.ts"
 import { AppError } from "../common/appError.ts"
 import { db, mongoDb } from "../db.ts"
@@ -9,48 +10,30 @@ class DataService {
     return collections.map((col) => col.name)
   }
 
-  async getDocuments(
-    collection: string,
-    skip: number = 0,
-    limit: number = 10,
-    searchParams: Record<string, any> = {}
-  ) {
-    // Build query object from search parameters
-    const query: Record<string, any> = {}
+  async getDocuments(collection: string, odataQuery: string) {
+    const {
+      query: filters,
+      projection,
+      sort,
+      skip = 0,
+      limit = 20,
+    } = createQuery(odataQuery)
 
-    for (const [key, value] of Object.entries(searchParams)) {
-      if (value !== undefined && value !== null && value !== "") {
-        // If the value looks like an ObjectId, try to match it
-        if (key === "_id" && ObjectId.isValid(value as string)) {
-          query[key] = new ObjectId(value as string)
-        } else if (typeof value === "string") {
-          // Use case-insensitive regex for string fields
-          query[key] = { $regex: value, $options: "i" }
-        } else {
-          // For other types, use exact match
-          query[key] = value
-        }
-      }
-    }
-
-    const documents = limit
-      ? await mongoDb
-          .collection(collection)
-          .find(query)
-          .skip(skip)
-          .limit(limit)
-          .toArray()
-      : []
-
-    const total = await mongoDb.collection(collection).countDocuments(query)
+    const documents = await mongoDb
+      .collection(collection)
+      .find(filters, projection)
+      .sort(sort)
+      .skip(skip || 0)
+      .limit(limit || 20)
+      .toArray()
 
     return {
       data: documents,
-      pagination: {
+      query: {
+        filters,
+        projection,
         skip,
         limit,
-        total,
-        hasMore: skip + limit < total,
       },
     }
   }

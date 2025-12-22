@@ -10,7 +10,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "langchain": "^1.2.1",
-    "mongodb": "^7.0.0"
+    "mongodb": "^7.0.0",
+    "odata-v4-mongodb": "^0.1.12"
   },
   "prettier": {
     "semi": false

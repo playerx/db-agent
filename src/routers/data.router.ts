@@ -46,28 +46,10 @@ router.get("/prompt", async (req, res) => {
 // Get documents from collection with pagination and search
 router.get("/:collection", async (req, res) => {
   const { collection } = req.params
-  const { skip, limit, ...searchParams } = req.query
 
-  // Parse pagination parameters
-  const skipNum = skip ? parseInt(skip as string, 10) : 0
-  const limitNum = limit ? parseInt(limit as string, 10) : 10
+  const queryParams = req.originalUrl.slice(req.originalUrl.indexOf("?") + 1)
 
-  // Validate pagination parameters
-  if (isNaN(skipNum) || skipNum < 0) {
-    return res.status(400).json({ error: "Invalid skip parameter" })
-  }
-  if (isNaN(limitNum) || limitNum < 0 || limitNum > 100) {
-    return res
-      .status(400)
-      .json({ error: "Invalid limit parameter (must be between 1 and 100)" })
-  }
-
-  const result = await dataService.getDocuments(
-    collection,
-    skipNum,
-    limitNum,
-    searchParams as Record<string, any>
-  )
+  const result = await dataService.getDocuments(collection, queryParams)
 
   res.json(result)
 })

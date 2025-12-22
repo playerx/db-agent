@@ -160,61 +160,50 @@ curl -X DELETE http://localhost:3000/data/users/507f1f77bcf86cd799439011
 
 ### 6. Execute AI Agent Prompt
 
-Execute a natural language query or operation using the AI agent.
+Execute a natural language query or operation using the AI agent. This endpoint streams real-time updates using Server-Sent Events (SSE).
 
 ```bash
-curl -X POST http://localhost:3000/data/prompt \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Find all active users"
-  }'
+curl -N -X GET "http://localhost:3000/data/prompt?prompt=Find%20all%20active%20users"
 ```
 
 **Example Prompts:**
 
 ```bash
 # Count documents
-curl -X POST http://localhost:3000/data/prompt \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "How many users are there?"
-  }'
+curl -N -X GET "http://localhost:3000/data/prompt?prompt=How%20many%20users%20are%20there?"
 
 # Complex query
-curl -X POST http://localhost:3000/data/prompt \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Show me all orders from the last 30 days"
-  }'
+curl -N -X GET "http://localhost:3000/data/prompt?prompt=Show%20me%20all%20orders%20from%20the%20last%2030%20days"
 
 # Aggregation
-curl -X POST http://localhost:3000/data/prompt \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "What is the average order value by customer?"
-  }'
+curl -N -X GET "http://localhost:3000/data/prompt?prompt=What%20is%20the%20average%20order%20value%20by%20customer?"
 ```
 
-**Response Example:**
-```json
-{
-  "result": "Found 42 active users",
-  "debug": [
-    {
-      "index": 0,
-      "step": "thinking",
-      "content": "I need to query the users collection..."
-    },
-    {
-      "index": 1,
-      "step": "action",
-      "content": "db.users.find({status: 'active'})"
-    }
-  ]
-}
+**Response Format (Server-Sent Events):**
+
+The endpoint streams updates in real-time using SSE format:
+
+```
+event: update
+data: {"step":"thinking","content":"I need to query the users collection..."}
+
+event: update
+data: {"step":"action","content":"db.users.find({status: 'active'})"}
+
+event: complete
+data: {"result":"Found 42 active users","debug":[...]}
 ```
 
-**Note:** This operation creates a PROMPT event log entry with the result and debug trace.
+**Error Response:**
+```
+event: error
+data: {"error":"Error message here"}
+```
+
+**Note:**
+- Use the `-N` flag with curl to disable buffering for streaming
+- URL-encode the prompt query parameter
+- This operation creates a PROMPT event log entry with the result and debug trace
 
 ---
 
@@ -427,6 +416,6 @@ curl -X GET http://localhost:3000/data/users \
 | GET | `/data/:collection/:id` | Get document by ID |
 | PUT | `/data/:collection/:id` | Update document by ID |
 | DELETE | `/data/:collection/:id` | Delete document by ID |
-| POST | `/data/prompt` | Execute AI agent prompt |
+| GET | `/data/prompt` | Execute AI agent prompt (SSE streaming) |
 | GET | `/events` | List all events |
 | DELETE | `/events/:id` | Delete event by ID |
