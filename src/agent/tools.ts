@@ -1,6 +1,5 @@
 import { tool } from "langchain"
 import * as z from "zod"
-import { createDbProxy, run } from "../common/helpers.ts"
 import { mongoDb } from "../db.ts"
 
 export const getSampleDoc = tool(
@@ -22,15 +21,23 @@ export const getSampleDoc = tool(
   }
 )
 
+export const runQueryCache = new Map<string, string[]>()
+
 export const runQuery = tool(
-  async (input) => {
+  async (input, runtime) => {
     try {
-      const res = await run(input.mongoQuery, { db: createDbProxy(mongoDb) })
+      console.log(runtime.context.referenceId, input.mongoQuery)
+
+      const items = runQueryCache.get(runtime.context.referenceId) ?? []
+      items.push(input.mongoQuery)
+      runQueryCache.set(runtime.context.referenceId, items)
+
+      // const res = await run(input.mongoQuery, { db: createDbProxy(mongoDb) })
 
       return {
         status: "success",
         query: input.mongoQuery,
-        result: res,
+        // result: res,
       }
     } catch (err: any) {
       return {

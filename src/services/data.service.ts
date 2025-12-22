@@ -2,6 +2,7 @@ import { EJSON } from "bson"
 import { ObjectId } from "mongodb"
 import { createQuery } from "odata-v4-mongodb"
 import { mongoAgent } from "../agent/mongoAgent.ts"
+import { runQueryCache } from "../agent/tools.ts"
 import { AppError } from "../common/appError.ts"
 import { db, mongoDb } from "../db.ts"
 
@@ -144,15 +145,17 @@ class DataService {
       throw new AppError("Prompt is required and must be a string")
     }
 
-    let result = ""
+    // let result =
     const debugLog: { index: number; step: string; content: string }[] = []
     let i = 0
+
+    const referenceId = crypto.randomUUID()
 
     for await (const chunk of await mongoAgent.stream(
       {
         messages: [prompt],
       },
-      { streamMode: "updates" }
+      { streamMode: "updates", context: { referenceId } }
     )) {
       const [step, content] = Object.entries(chunk)[0]
 
@@ -176,10 +179,14 @@ class DataService {
         (content.messages[0].response_metadata as any)?.stop_reason ===
         "end_turn"
       ) {
-        result = content.messages[0].content.toString()
+        // result = content.messages[0].content.toString()
         break
       }
     }
+
+    const result = runQueryCache.get(referenceId) ?? []
+
+    runQueryCache.delete(referenceId)
 
     await db.eventLog.insertOne({
       type: "PROMPT",

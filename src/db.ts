@@ -19,7 +19,7 @@ export type EventLogDb =
   | {
       type: "PROMPT"
       prompt: string
-      result: string
+      result: string[]
       timestamp: Date
       debug?: {
         messages: {
