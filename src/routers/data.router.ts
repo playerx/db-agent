@@ -44,10 +44,23 @@ router.get("/prompt", async (req, res) => {
 })
 
 // Get documents from collection with pagination and search
+router.get("/:collection/count", async (req, res) => {
+  const { collection } = req.params
+
+  const index = req.originalUrl.indexOf("?")
+  const queryParams = index === -1 ? "" : req.originalUrl.slice(index + 1)
+
+  const result = await dataService.getDocumentCount(collection, queryParams)
+
+  res.json(result)
+})
+
+// Get documents from collection with pagination and search
 router.get("/:collection", async (req, res) => {
   const { collection } = req.params
 
-  const queryParams = req.originalUrl.slice(req.originalUrl.indexOf("?") + 1)
+  const index = req.originalUrl.indexOf("?")
+  const queryParams = index === -1 ? "" : req.originalUrl.slice(index + 1)
 
   const result = await dataService.getDocuments(collection, queryParams)
 

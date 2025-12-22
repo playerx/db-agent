@@ -17,7 +17,7 @@ class DataService {
       sort,
       skip = 0,
       limit = 20,
-    } = createQuery(odataQuery)
+    } = odataQuery ? createQuery(odataQuery) : {}
 
     const documents = await mongoDb
       .collection(collection)
@@ -35,6 +35,16 @@ class DataService {
         skip,
         limit,
       },
+    }
+  }
+
+  async getDocumentCount(collection: string, odataQuery: string) {
+    const { query: filters } = odataQuery ? createQuery(odataQuery) : {}
+
+    const count = await mongoDb.collection(collection).countDocuments(filters)
+
+    return {
+      count,
     }
   }
 
