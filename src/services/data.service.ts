@@ -163,6 +163,15 @@ class DataService {
       timestamp: new Date(),
     })
 
+    await db.promptLog.updateOne(
+      { _id: new ObjectId(promptLogId) },
+      {
+        $set: {
+          lastUsedAt: new Date(),
+        },
+      }
+    )
+
     return results
   }
 }
