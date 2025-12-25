@@ -1,8 +1,6 @@
 import { EJSON } from "bson"
 import { ObjectId } from "mongodb"
 import { createQuery } from "odata-v4-mongodb"
-import { mongoAgent } from "../agent/mongoAgent.ts"
-import { runQueryCache } from "../agent/tools.ts"
 import { AppError } from "../common/appError.ts"
 import { createDbProxy, run } from "../common/helpers.ts"
 import { db, mongoDb } from "../db.ts"
@@ -136,73 +134,6 @@ class DataService {
     })
 
     return { success: true, deletedCount: result.deletedCount }
-  }
-
-  async executePrompt(
-    prompt: string,
-    cb?: (step: string, content: string) => void
-  ) {
-    if (!prompt || typeof prompt !== "string") {
-      throw new AppError("Prompt is required and must be a string")
-    }
-
-    let promptResult = ""
-    const debugLog: { index: number; step: string; content: string }[] = []
-    let i = 0
-
-    const referenceId = crypto.randomUUID()
-
-    for await (const chunk of await mongoAgent.stream(
-      {
-        messages: [prompt],
-      },
-      { streamMode: "updates", context: { referenceId } }
-    )) {
-      const [step, content] = Object.entries(chunk)[0]
-
-      const contentData =
-        typeof content.messages[0].content === "object"
-          ? JSON.stringify(content.messages[0].content)
-          : content.messages[0].content.toString()
-
-      debugLog.push({
-        index: ++i,
-        step,
-        content: contentData,
-      })
-
-      cb?.(
-        step === "tools" ? `${content.messages[0].name} (tool)` : step,
-        contentData
-      )
-
-      if (
-        (content.messages[0].response_metadata as any)?.stop_reason ===
-        "end_turn"
-      ) {
-        promptResult = content.messages[0].content.toString()
-        break
-      }
-    }
-
-    const queries = runQueryCache.get(referenceId) ?? []
-
-    runQueryCache.delete(referenceId)
-
-    await db.promptLog.insertOne({
-      prompt,
-      result: promptResult,
-      queries,
-      debug: { messages: debugLog },
-      lastUsedAt: new Date(),
-      timestamp: new Date(),
-    })
-
-    return {
-      promptResult,
-      queries,
-      debug: debugLog,
-    }
   }
 
   async runQueries(queries: string[]) {

@@ -9,45 +9,6 @@ router.get("/collections", async (_req, res) => {
   res.json({ collections: collectionNames })
 })
 
-// Execute prompt using AI agent
-router.get("/prompt", async (req, res) => {
-  const { prompt } = req.query
-
-  // Set up Server-Sent Events (SSE) for streaming
-  res.setHeader("Content-Type", "text/event-stream")
-  res.setHeader("Cache-Control", "no-cache")
-  res.setHeader("Connection", "keep-alive")
-
-  try {
-    const result = await dataService.executePrompt(
-      prompt!.toString(),
-      (step, content) => {
-        // Stream each update to the client
-        res.write(`event: update\n`)
-        res.write(`data: ${JSON.stringify({ step, content })}\n\n`)
-      }
-    )
-
-    // Send final result
-    res.write(`event: complete\n`)
-    res.write(
-      `data: ${JSON.stringify({
-        result: result.promptResult,
-        queries: result.queries,
-      })}\n\n`
-    )
-    res.end()
-  } catch (error) {
-    res.write(`event: error\n`)
-    res.write(
-      `data: ${JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      })}\n\n`
-    )
-    res.end()
-  }
-})
-
 router.post("/queries", async (req, res) => {
   const queries = req.body
 
