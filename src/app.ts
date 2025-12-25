@@ -3,6 +3,7 @@ import "dotenv/config"
 import express from "express"
 import dataRouter from "./routers/data.router.ts"
 import eventRouter from "./routers/event.router.ts"
+import jsonTransformRouter from "./routers/jsonTransform.router.ts"
 import { errorHandler } from "./routers/middlewares/errorHandler.middleware.ts"
 import promptRouter from "./routers/promptLog.router.ts"
 
@@ -17,6 +18,7 @@ app.use(express.json())
 app.use("/data", dataRouter)
 app.use("/events", eventRouter)
 app.use("/prompt", promptRouter)
+app.use("/transform", jsonTransformRouter)
 
 // Error handler (must be last)
 app.use(errorHandler)
