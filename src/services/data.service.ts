@@ -194,6 +194,7 @@ class DataService {
       result: promptResult,
       queries,
       debug: { messages: debugLog },
+      lastUsedAt: new Date(),
       timestamp: new Date(),
     })
 

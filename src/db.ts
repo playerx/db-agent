@@ -27,6 +27,7 @@ export type PromptLogDb = {
     }[]
   }
 
+  lastUsedAt: Date
   timestamp: Date
 }
 

@@ -30,7 +30,12 @@ router.get("/prompt", async (req, res) => {
 
     // Send final result
     res.write(`event: complete\n`)
-    res.write(`data: ${JSON.stringify(result.result)}\n\n`)
+    res.write(
+      `data: ${JSON.stringify({
+        result: result.promptResult,
+        queries: result.queries,
+      })}\n\n`
+    )
     res.end()
   } catch (error) {
     res.write(`event: error\n`)
