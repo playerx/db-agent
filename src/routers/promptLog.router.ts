@@ -26,6 +26,7 @@ router.get("/", async (req, res) => {
     res.write(`event: complete\n`)
     res.write(
       `data: ${JSON.stringify({
+        id: result.id,
         result: result.promptResult,
         queries: result.queries,
       })}\n\n`

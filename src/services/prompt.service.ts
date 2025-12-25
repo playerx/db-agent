@@ -56,7 +56,7 @@ class PromptService {
 
     runQueryCache.delete(referenceId)
 
-    await db.promptLog.insertOne({
+    const { insertedId } = await db.promptLog.insertOne({
       prompt,
       result: promptResult,
       queries,
@@ -66,6 +66,7 @@ class PromptService {
     })
 
     return {
+      id: insertedId.toHexString(),
       promptResult,
       queries,
       debug: debugLog,
