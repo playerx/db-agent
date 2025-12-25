@@ -21,6 +21,8 @@ tags:
     description: MongoDB collection operations with OData support
   - name: Events
     description: Event logging and retrieval
+  - name: Prompt Logs
+    description: AI prompt execution history and logs
 
 paths:
   /data/collections:
@@ -46,62 +48,53 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /data/prompt:
-    get:
+  /data/queries:
+    post:
       tags:
         - Data
-      summary: Execute AI agent prompt
+      summary: Execute multiple database queries
       description: |
-        Execute a natural language query or operation using the AI agent.
-        This endpoint streams real-time updates using Server-Sent Events (SSE).
-
-        The AI agent can understand and execute complex database operations,
-        aggregations, and queries expressed in natural language.
-      operationId: executePrompt
-      parameters:
-        - name: prompt
-          in: query
-          required: true
-          description: Natural language prompt for the AI agent
-          schema:
-            type: string
-          examples:
-            countUsers:
-              value: "How many users are there?"
-              summary: Count documents
-            recentOrders:
-              value: "Show me all orders from the last 30 days"
-              summary: Date-based query
-            aggregation:
-              value: "What is the average order value by customer?"
-              summary: Aggregation query
+        Execute an array of raw MongoDB queries and return their results.
+        This endpoint allows you to run multiple queries in parallel and get back
+        the serialized results. Queries must be valid MongoDB query strings.
+      operationId: executeQueries
+      requestBody:
+        required: true
+        description: Array of MongoDB query strings to execute
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+            examples:
+              singleQuery:
+                summary: Single query
+                value: ["db.users.find({status: 'active'}).toArray()"]
+              multipleQueries:
+                summary: Multiple queries
+                value:
+                  - "db.users.findOne({_id: ObjectId('507f1f77bcf86cd799439011')})"
+                  - "db.orders.find({userId: ObjectId('507f1f77bcf86cd799439011')}).toArray()"
       responses:
         '200':
-          description: Server-Sent Events stream
+          description: Query results
           content:
-            text/event-stream:
+            application/json:
               schema:
-                type: string
-                description: |
-                  SSE stream with events:
-                  - 'update': Progress updates with step and content
-                  - 'complete': Final result
-                  - 'error': Error information
-              examples:
-                update:
-                  value: |
-                    event: update
-                    data: {"step":"thinking","content":"I need to query the users collection..."}
-                complete:
-                  value: |
-                    event: complete
-                    data: {"result":"Found 42 active users","debug":[...]}
-                error:
-                  value: |
-                    event: error
-                    data: {"error":"Error message here"}
+                type: array
+                items:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+              example:
+                - [{"_id": "507f1f77bcf86cd799439011", "name": "John Doe", "status": "active"}]
+                - [{"_id": "507f1f77bcf86cd799439012", "orderId": "ORD-123", "total": 99.99}]
         '400':
           $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /data/{collection}:
     get:
@@ -175,18 +168,29 @@ paths:
                     items:
                       type: object
                       additionalProperties: true
-                  pagination:
-                    $ref: '#/components/schemas/Pagination'
+                  query:
+                    type: object
+                    properties:
+                      filters:
+                        type: object
+                        additionalProperties: true
+                      projection:
+                        type: object
+                        additionalProperties: true
+                      skip:
+                        type: integer
+                      limit:
+                        type: integer
               example:
                 data:
                   - _id: "507f1f77bcf86cd799439011"
                     name: "John Doe"
                     status: "active"
-                pagination:
+                query:
+                  filters: {}
+                  projection: {}
                   skip: 0
-                  limit: 10
-                  total: 42
-                  hasMore: true
+                  limit: 20
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -404,28 +408,31 @@ paths:
                     - _id: "507f1f77bcf86cd799439012"
                       type: "UPDATE"
                       collection: "users"
-                      documentId: "507f1f77bcf86cd799439011"
+                      id: "507f1f77bcf86cd799439011"
                       timestamp: "2025-12-22T10:30:00Z"
                       data:
                         name: "Jane Doe"
                     - _id: "507f1f77bcf86cd799439013"
                       type: "DELETE"
                       collection: "users"
-                      documentId: "507f1f77bcf86cd799439014"
+                      id: "507f1f77bcf86cd799439014"
                       timestamp: "2025-12-22T10:35:00Z"
+                    - _id: "507f1f77bcf86cd799439016"
+                      type: "QUERY"
+                      timestamp: "2025-12-22T10:40:00Z"
+                      queries:
+                        - "db.users.find({status: 'active'}).toArray()"
+                      results: [42]
                 withDebug:
                   summary: With debug parameter
                   value:
                     events:
                       - _id: "507f1f77bcf86cd799439015"
-                        type: "PROMPT"
+                        type: "QUERY"
                         timestamp: "2025-12-22T10:40:00Z"
-                        prompt: "Find all active users"
-                        result: "Found 42 active users"
-                        debug:
-                          - index: 0
-                            step: "thinking"
-                            content: "I need to query..."
+                        queries:
+                          - "db.users.find({status: 'active'}).toArray()"
+                        results: [42]
                     pagination:
                       skip: 0
                       limit: 10
@@ -479,6 +486,231 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /prompt:
+    get:
+      tags:
+        - Prompt Logs
+      summary: Execute AI agent prompt
+      description: |
+        Execute a natural language query or operation using the AI agent.
+        This endpoint streams real-time updates using Server-Sent Events (SSE).
+
+        The AI agent can understand and execute complex database operations,
+        aggregations, and queries expressed in natural language.
+      operationId: executePromptLog
+      parameters:
+        - name: prompt
+          in: query
+          required: true
+          description: Natural language prompt for the AI agent
+          schema:
+            type: string
+          examples:
+            countUsers:
+              value: "How many users are there?"
+              summary: Count documents
+            recentOrders:
+              value: "Show me all orders from the last 30 days"
+              summary: Date-based query
+            aggregation:
+              value: "What is the average order value by customer?"
+              summary: Aggregation query
+      responses:
+        '200':
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE stream with events:
+                  - 'update': Progress updates with step and content
+                  - 'complete': Final result
+                  - 'error': Error information
+              examples:
+                update:
+                  value: |
+                    event: update
+                    data: {"step":"thinking","content":"I need to query the users collection..."}
+                complete:
+                  value: |
+                    event: complete
+                    data: {"result":"Found 42 active users","queries":["db.users.find({status: 'active'}).toArray()"]}
+                error:
+                  value: |
+                    event: error
+                    data: {"error":"Error message here"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /prompt/log:
+    get:
+      tags:
+        - Prompt Logs
+      summary: List all prompt logs
+      description: |
+        Get a list of all AI prompt execution logs with pagination.
+        Each log contains the prompt, result, queries executed, and optional debug information.
+      operationId: listPromptLogs
+      parameters:
+        - name: skip
+          in: query
+          description: Number of logs to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          description: Maximum number of logs to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PromptLog'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+              example:
+                data:
+                  - _id: "507f1f77bcf86cd799439015"
+                    prompt: "Find all active users"
+                    result: "Found 42 active users"
+                    queries: ["db.users.find({status: 'active'}).toArray()"]
+                    timestamp: "2025-12-25T10:00:00Z"
+                    lastUsedAt: "2025-12-25T10:00:00Z"
+                pagination:
+                  skip: 0
+                  limit: 10
+                  total: 25
+                  hasMore: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /prompt/log/{id}:
+    get:
+      tags:
+        - Prompt Logs
+      summary: Get prompt log by ID
+      description: |
+        Retrieve a specific prompt log by its ID.
+        Use the debug query parameter to include detailed execution trace.
+      operationId: getPromptLogById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Prompt log ID (MongoDB ObjectId)
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+        - name: debug
+          in: query
+          description: Include debug trace information
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptLog'
+              examples:
+                withoutDebug:
+                  summary: Without debug info
+                  value:
+                    _id: "507f1f77bcf86cd799439015"
+                    prompt: "Find all active users"
+                    result: "Found 42 active users"
+                    queries: ["db.users.find({status: 'active'}).toArray()"]
+                    timestamp: "2025-12-25T10:00:00Z"
+                    lastUsedAt: "2025-12-25T10:00:00Z"
+                withDebug:
+                  summary: With debug info
+                  value:
+                    _id: "507f1f77bcf86cd799439015"
+                    prompt: "Find all active users"
+                    result: "Found 42 active users"
+                    queries: ["db.users.find({status: 'active'}).toArray()"]
+                    timestamp: "2025-12-25T10:00:00Z"
+                    lastUsedAt: "2025-12-25T10:00:00Z"
+                    debug:
+                      messages:
+                        - index: 1
+                          step: "thinking"
+                          content: "I need to query the users collection..."
+                        - index: 2
+                          step: "runQuery (tool)"
+                          content: "db.users.find({status: 'active'}).toArray()"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Prompt log not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Prompt log not found"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Prompt Logs
+      summary: Delete prompt log by ID
+      description: Delete a specific prompt log entry
+      operationId: deletePromptLogById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Prompt log ID (MongoDB ObjectId)
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      responses:
+        '200':
+          description: Prompt log deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+              example:
+                success: true
+                message: "Prompt log deleted successfully"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Prompt log not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Prompt log not found"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   parameters:
     CollectionName:
@@ -525,12 +757,12 @@ components:
           description: Event ID
         type:
           type: string
-          enum: [UPDATE, DELETE, PROMPT]
+          enum: [UPDATE, DELETE, QUERY]
           description: Type of event
         collection:
           type: string
           description: Collection name (for UPDATE/DELETE events)
-        documentId:
+        id:
           type: string
           description: Document ID (for UPDATE/DELETE events)
         timestamp:
@@ -541,24 +773,59 @@ components:
           type: object
           additionalProperties: true
           description: Update data (for UPDATE events)
+        queries:
+          type: array
+          items:
+            type: string
+          description: Array of query strings (for QUERY events)
+        results:
+          type: array
+          description: Query results summary (for QUERY events)
+          items:
+            oneOf:
+              - type: integer
+              - type: object
+
+    PromptLog:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Prompt log ID
         prompt:
           type: string
-          description: AI prompt text (for PROMPT events)
+          description: The AI prompt that was executed
         result:
           type: string
-          description: AI result (for PROMPT events)
-        debug:
+          description: The AI's result/response
+        queries:
           type: array
-          description: Debug trace (for PROMPT events when debug is enabled)
           items:
-            type: object
-            properties:
-              index:
-                type: integer
-              step:
-                type: string
-              content:
-                type: string
+            type: string
+          description: Array of MongoDB queries that were executed
+        timestamp:
+          type: string
+          format: date-time
+          description: When the prompt was executed
+        lastUsedAt:
+          type: string
+          format: date-time
+          description: Last time this prompt was used
+        debug:
+          type: object
+          description: Debug information (only included when debug parameter is true)
+          properties:
+            messages:
+              type: array
+              items:
+                type: object
+                properties:
+                  index:
+                    type: integer
+                  step:
+                    type: string
+                  content:
+                    type: string
 
     Error:
       type: object

@@ -4,7 +4,7 @@ import express from "express"
 import dataRouter from "./routers/data.router.ts"
 import eventRouter from "./routers/event.router.ts"
 import { errorHandler } from "./routers/middlewares/errorHandler.middleware.ts"
-import promptLogRouter from "./routers/promptLog.router.ts"
+import promptRouter from "./routers/promptLog.router.ts"
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -16,7 +16,7 @@ app.use(express.json())
 // Routes
 app.use("/data", dataRouter)
 app.use("/events", eventRouter)
-app.use("/promptLogs", promptLogRouter)
+app.use("/prompt", promptRouter)
 
 // Error handler (must be last)
 app.use(errorHandler)
