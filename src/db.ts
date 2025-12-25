@@ -36,6 +36,7 @@ export type EventLogDb =
       type: "QUERY"
       queries: string[]
       results: string[]
+      promptLogId: string
       timestamp: Date
     }
   | {

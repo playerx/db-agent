@@ -136,9 +136,13 @@ class DataService {
     return { success: true, deletedCount: result.deletedCount }
   }
 
-  async runQueries(queries: string[]) {
-    const tasks = queries.map(async (x) => {
-      const res = await run(x, { db: createDbProxy(mongoDb) })
+  async runQueries(queries: string[], promptLogId: string) {
+    const finalQueries = queries.map((x) => x.replaceAll("\n", " ").trim())
+
+    const tasks = finalQueries.map(async (x) => {
+      const res = await run(x, {
+        db: createDbProxy(mongoDb),
+      })
 
       if (x.includes(".findOne(")) {
         return [EJSON.serialize(res)]
@@ -153,8 +157,9 @@ class DataService {
 
     await db.eventLog.insertOne({
       type: "QUERY",
-      queries,
+      queries: finalQueries,
       results: results.map((x) => (Array.isArray(x) ? x.length : x)),
+      promptLogId,
       timestamp: new Date(),
     })
 

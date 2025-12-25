@@ -1,4 +1,5 @@
 import { Router } from "express"
+import { AppError } from "../common/appError.ts"
 import { dataService } from "../services/data.service.ts"
 
 const router = Router()
@@ -10,13 +11,18 @@ router.get("/collections", async (_req, res) => {
 })
 
 router.post("/queries", async (req, res) => {
+  const promptLogId = req.query.promptLogId?.toString()
   const queries = req.body
+
+  if (!promptLogId) {
+    throw new AppError("Please provide `promptLogId` query string")
+  }
 
   if (!queries?.length) {
     return
   }
 
-  const result = await dataService.runQueries(queries)
+  const result = await dataService.runQueries(queries, promptLogId)
 
   res.json(result)
 })
