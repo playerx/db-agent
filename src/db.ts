@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId } from "mongodb"
+import { MongoClient, type ObjectId } from "mongodb"
 
 const MONGO_CONNECTION_STRING = process.env["MONGO_CONNECTION_STRING"]
 if (!MONGO_CONNECTION_STRING) {
@@ -10,24 +10,32 @@ const client = await new MongoClient(MONGO_CONNECTION_STRING).connect()
 export const mongoDb = client.db()
 
 export const db = {
-  eventLog: client
-    .db(mongoDb.databaseName + "_manager")
-    .collection<EventLogDb>("eventLog"),
+  promptLog: mongoDb.collection<PromptLogDb>("ai.promptLog"),
+  eventLog: mongoDb.collection<EventLogDb>("ai.eventLog"),
+}
+
+export type PromptLogDb = {
+  prompt: string
+  result: string
+  queries: string[]
+
+  debug?: {
+    messages: {
+      index: number
+      step: string
+      content: string
+    }[]
+  }
+
+  timestamp: Date
 }
 
 export type EventLogDb =
   | {
-      type: "PROMPT"
-      prompt: string
-      result: string[]
+      type: "QUERY"
+      queries: string[]
+      results: string[]
       timestamp: Date
-      debug?: {
-        messages: {
-          index: number
-          step: string
-          content: string
-        }[]
-      }
     }
   | {
       type: "DELETE"

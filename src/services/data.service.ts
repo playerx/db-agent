@@ -146,7 +146,7 @@ class DataService {
       throw new AppError("Prompt is required and must be a string")
     }
 
-    // let result =
+    let promptResult = ""
     const debugLog: { index: number; step: string; content: string }[] = []
     let i = 0
 
@@ -180,25 +180,26 @@ class DataService {
         (content.messages[0].response_metadata as any)?.stop_reason ===
         "end_turn"
       ) {
-        // result = content.messages[0].content.toString()
+        promptResult = content.messages[0].content.toString()
         break
       }
     }
 
-    const result = runQueryCache.get(referenceId) ?? []
+    const queries = runQueryCache.get(referenceId) ?? []
 
     runQueryCache.delete(referenceId)
 
-    await db.eventLog.insertOne({
-      type: "PROMPT",
+    await db.promptLog.insertOne({
       prompt,
-      result,
+      result: promptResult,
+      queries,
       debug: { messages: debugLog },
       timestamp: new Date(),
     })
 
     return {
-      result,
+      promptResult,
+      queries,
       debug: debugLog,
     }
   }
@@ -216,7 +217,16 @@ class DataService {
       }
     })
 
-    return await Promise.all(tasks)
+    const results = await Promise.all(tasks)
+
+    await db.eventLog.insertOne({
+      type: "QUERY",
+      queries,
+      results: results.map((x) => (Array.isArray(x) ? x.length : x)),
+      timestamp: new Date(),
+    })
+
+    return results
   }
 }
 
