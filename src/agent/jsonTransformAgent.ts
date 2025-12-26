@@ -5,10 +5,13 @@ import {
   validateTransformation,
 } from "./jsonTransformTools.ts"
 
+const { AI_MODEL } = process.env
+if (!AI_MODEL) {
+  throw new Error("Please define AI_MODEL env variable")
+}
+
 export const jsonTransformAgent = createAgent({
-  model: "claude-sonnet-4-5-20250929",
-  // model: "google-genai:gemini-2.0-flash-001",
-  // model: "google-genai:gemini-2.5-pro",
+  model: AI_MODEL,
   tools: [analyzeJson, transformJson, validateTransformation],
   systemPrompt: `You are a JSON transformation assistant. Your role is to:
 1. Analyze the input JSON structure to understand its format

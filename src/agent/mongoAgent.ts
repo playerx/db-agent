@@ -1,10 +1,13 @@
 import { createAgent } from "langchain"
 import { decisionMaker, getSampleDoc, runQuery } from "./tools.ts"
 
+const { AI_MODEL } = process.env
+if (!AI_MODEL) {
+  throw new Error("Please define AI_MODEL env variable")
+}
+
 export const mongoAgent = createAgent({
-  model: "claude-sonnet-4-5-20250929",
-  // model: "google-genai:gemini-2.0-flash-thinking-exp-01-21",
-  // model: "google-genai:gemini-2.5-pro",
+  model: AI_MODEL,
   tools: [getSampleDoc, runQuery, decisionMaker],
   systemPrompt: `You are a MongoDB query generation specialist. Your sole responsibility is to generate valid MongoDB queries.
 
