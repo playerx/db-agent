@@ -7,6 +7,9 @@ info:
     This API provides CRUD operations for MongoDB collections and includes an AI agent
     that can execute natural language prompts to query and manipulate data. All data
     endpoints support OData query protocol for filtering, sorting, and pagination.
+
+    The API supports multi-tenancy, allowing multiple isolated database configurations.
+    Most endpoints require authentication via the x-tenant-id header.
   version: 1.0.0
   contact:
     name: API Support
@@ -17,14 +20,183 @@ servers:
     description: Production server
 
 tags:
+  - name: Health
+    description: Health check and status endpoints
+  - name: Tenants
+    description: Multi-tenant management operations
   - name: Data
     description: MongoDB collection operations with OData support
+  - name: Transform
+    description: AI-powered JSON transformation
   - name: Events
     description: Event logging and retrieval
   - name: Prompt Logs
     description: AI prompt execution history and logs
 
+security:
+  - TenantAuth: []
+
 paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: Root health check
+      description: Simple health check endpoint that returns a checkmark
+      operationId: rootHealthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "✅"
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Detailed health check
+      description: Returns detailed health information including status, timestamp, and uptime
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Health check information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: number
+                    description: Server uptime in seconds
+              example:
+                status: "ok"
+                timestamp: "2025-12-26T10:00:00.000Z"
+                uptime: 3600.5
+
+  /tenants:
+    get:
+      tags:
+        - Tenants
+      summary: List all tenants
+      description: Returns a list of all configured tenants with their database configurations
+      operationId: listTenants
+      security: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tenant'
+              example:
+                tenants:
+                  - id: "507f1f77bcf86cd799439011"
+                    dbName: "my_database"
+                    displayConfig:
+                      users: ["name", "email"]
+                      products: ["name", "price"]
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Tenants
+      summary: Create a new tenant
+      description: |
+        Create a new tenant configuration with database connection details.
+        The database connection string will be encrypted before storage.
+      operationId: createTenant
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dbConnectionString
+                - dbName
+                - displayConfig
+              properties:
+                dbConnectionString:
+                  type: string
+                  description: MongoDB connection string (will be encrypted)
+                  example: "mongodb://localhost:27017"
+                dbName:
+                  type: string
+                  description: Name of the database to use
+                  example: "my_database"
+                displayConfig:
+                  type: object
+                  description: Configuration for which fields to display for each collection
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+                  example:
+                    users: ["name", "email"]
+                    products: ["name", "price", "category"]
+      responses:
+        '200':
+          description: Tenant created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant:
+                    $ref: '#/components/schemas/Tenant'
+              example:
+                tenant:
+                  id: "507f1f77bcf86cd799439011"
+                  dbName: "my_database"
+                  displayConfig:
+                    users: ["name", "email"]
+                    products: ["name", "price", "category"]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /data/databases:
+    get:
+      tags:
+        - Data
+      summary: List all databases
+      description: Returns a list of all available databases for the current tenant
+      operationId: listDatabases
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  databases:
+                    type: array
+                    items:
+                      type: string
+                    example: ["admin", "local", "my_database"]
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /data/collections:
     get:
       tags:
@@ -57,7 +229,16 @@ paths:
         Execute an array of raw MongoDB queries and return their results.
         This endpoint allows you to run multiple queries in parallel and get back
         the serialized results. Queries must be valid MongoDB query strings.
+        Requires a promptLogId to associate the queries with a prompt execution.
       operationId: executeQueries
+      parameters:
+        - name: promptLogId
+          in: query
+          required: true
+          description: ID of the prompt log to associate these queries with
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
       requestBody:
         required: true
         description: Array of MongoDB query strings to execute
@@ -535,7 +716,7 @@ paths:
                 complete:
                   value: |
                     event: complete
-                    data: {"result":"Found 42 active users","queries":["db.users.find({status: 'active'}).toArray()"]}
+                    data: {"id":"507f1f77bcf86cd799439015","result":"Found 42 active users","queries":["db.users.find({status: 'active'}).toArray()"]}
                 error:
                   value: |
                     event: error
@@ -711,6 +892,91 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /transform:
+    post:
+      tags:
+        - Transform
+      summary: Transform JSON using AI
+      description: |
+        Transform JSON data using AI-powered natural language instructions.
+        Provide JSON data and a prompt describing how you want to transform it,
+        and the AI will return the transformed result.
+      operationId: transformJson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - json
+                - prompt
+              properties:
+                json:
+                  type: object
+                  additionalProperties: true
+                  description: The JSON data to transform
+                prompt:
+                  type: string
+                  description: Natural language instruction for how to transform the data
+            examples:
+              extractFields:
+                summary: Extract specific fields
+                value:
+                  json:
+                    users:
+                      - name: "John Doe"
+                        email: "john@example.com"
+                        age: 30
+                        city: "New York"
+                      - name: "Jane Smith"
+                        email: "jane@example.com"
+                        age: 25
+                        city: "Los Angeles"
+                  prompt: "Extract only name and email fields from each user"
+              restructure:
+                summary: Restructure data
+                value:
+                  json:
+                    items:
+                      - id: 1
+                        name: "Product A"
+                        price: 19.99
+                      - id: 2
+                        name: "Product B"
+                        price: 29.99
+                  prompt: "Convert to an object keyed by product ID"
+      responses:
+        '200':
+          description: Transformation successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    description: AI's explanation of the transformation
+                  data:
+                    type: object
+                    additionalProperties: true
+                    description: The transformed JSON data
+                  debug:
+                    type: object
+                    description: Debug information about the transformation
+              example:
+                result: "Extracted name and email fields from each user"
+                data:
+                  users:
+                    - name: "John Doe"
+                      email: "john@example.com"
+                    - name: "Jane Smith"
+                      email: "jane@example.com"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   parameters:
     CollectionName:
@@ -732,7 +998,39 @@ components:
         pattern: '^[0-9a-fA-F]{24}$'
       example: "507f1f77bcf86cd799439011"
 
+  securitySchemes:
+    TenantAuth:
+      type: apiKey
+      in: header
+      name: x-tenant-id
+      description: |
+        Tenant ID for multi-tenant authentication. Include this header with your tenant ID
+        to access tenant-specific data. Most endpoints require this authentication.
+
   schemas:
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Tenant ID
+        dbName:
+          type: string
+          description: Database name
+        displayConfig:
+          type: object
+          description: Configuration for field display per collection
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      example:
+        id: "507f1f77bcf86cd799439011"
+        dbName: "my_database"
+        displayConfig:
+          users: ["name", "email"]
+          products: ["name", "price"]
+
     Pagination:
       type: object
       properties:
