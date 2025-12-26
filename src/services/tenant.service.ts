@@ -22,6 +22,28 @@ class TenantService {
 
     return res
   }
+
+  async list() {
+    const tenants = await managerDb.tenants.find({}).toArray()
+    return tenants
+  }
+
+  async create(data: {
+    dbConnectionString: string
+    dbName: string
+    displayConfig: { [collectionName: string]: string[] }
+  }) {
+    const result = await managerDb.tenants.insertOne({
+      encryptedDbConnectionString: encryption.encrypt(data.dbConnectionString),
+      dbName: data.dbName,
+      displayConfig: data.displayConfig,
+    })
+
+    return {
+      _id: result.insertedId,
+      ...data,
+    }
+  }
 }
 
 export const tenantService = new TenantService()

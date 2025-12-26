@@ -6,6 +6,7 @@ import jsonTransformRouter from "./routers/jsonTransform.router.ts"
 import { errorHandler } from "./routers/middlewares/errorHandler.middleware.ts"
 import promptRouter from "./routers/prompt.router.ts"
 import publicRouter from "./routers/public.router.ts"
+import tenantRouter from "./routers/tenant.router.ts"
 
 const { AI_MODEL, PORT = 3000 } = process.env
 
@@ -20,6 +21,7 @@ app.use("/", publicRouter)
 app.use("/data", dataRouter)
 app.use("/prompt", promptRouter)
 app.use("/transform", jsonTransformRouter)
+app.use("/tenants", tenantRouter)
 
 // Error handler (must be last)
 app.use(errorHandler)
