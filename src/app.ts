@@ -7,8 +7,9 @@ import jsonTransformRouter from "./routers/jsonTransform.router.ts"
 import { errorHandler } from "./routers/middlewares/errorHandler.middleware.ts"
 import promptRouter from "./routers/promptLog.router.ts"
 
+const { AI_MODEL, PORT = 3000 } = process.env
+
 const app = express()
-const PORT = process.env.PORT || 3000
 
 // Middleware
 app.use(cors())
@@ -25,5 +26,5 @@ app.use(errorHandler)
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
+  console.log(`Server is running on port ${PORT} | AI Model: ${AI_MODEL}`)
 })
