@@ -3,7 +3,7 @@ import { AppError } from "../common/appError.ts"
 import { dataService } from "../services/data.service.ts"
 import { authMiddleware } from "./middlewares/auth.middleware.ts"
 
-const router = Router().use(authMiddleware)
+const router = Router().use(authMiddleware as any)
 
 router.get("/databases", async (req, res) => {
   const { tenantId } = req.user
@@ -15,15 +15,15 @@ router.get("/databases", async (req, res) => {
 
 // List all available collections
 router.get("/collections", async (req, res) => {
-  const { tenantId, dbName } = req.user
+  const { tenantId } = req.user
 
-  const collectionNames = await dataService.listCollections(tenantId, dbName)
+  const collectionNames = await dataService.listCollections(tenantId)
 
   res.json({ collections: collectionNames })
 })
 
 router.post("/queries", async (req, res) => {
-  const { tenantId, dbName } = req.user
+  const { tenantId } = req.user
 
   const promptLogId = req.query.promptLogId?.toString()
   const queries = req.body
@@ -36,19 +36,14 @@ router.post("/queries", async (req, res) => {
     return
   }
 
-  const result = await dataService.runQueries(
-    tenantId,
-    dbName,
-    queries,
-    promptLogId
-  )
+  const result = await dataService.runQueries(tenantId, queries, promptLogId)
 
   res.json(result)
 })
 
 // Get documents from collection with pagination and search
 router.get("/:collection/count", async (req, res) => {
-  const { tenantId, dbName } = req.user
+  const { tenantId } = req.user
   const { collection } = req.params
 
   const index = req.originalUrl.indexOf("?")
@@ -56,7 +51,6 @@ router.get("/:collection/count", async (req, res) => {
 
   const result = await dataService.getDocumentCount(
     tenantId,
-    dbName,
     collection,
     queryParams
   )
@@ -66,7 +60,7 @@ router.get("/:collection/count", async (req, res) => {
 
 // Get documents from collection with pagination and search
 router.get("/:collection", async (req, res) => {
-  const { tenantId, dbName } = req.user
+  const { tenantId } = req.user
   const { collection } = req.params
 
   const index = req.originalUrl.indexOf("?")
@@ -74,7 +68,6 @@ router.get("/:collection", async (req, res) => {
 
   const result = await dataService.getDocuments(
     tenantId,
-    dbName,
     collection,
     queryParams
   )
@@ -84,27 +77,21 @@ router.get("/:collection", async (req, res) => {
 
 // Get document by ID
 router.get("/:collection/:id", async (req, res) => {
-  const { tenantId, dbName } = req.user
+  const { tenantId } = req.user
   const { collection, id } = req.params
-  const document = await dataService.getDocumentById(
-    tenantId,
-    dbName,
-    collection,
-    id
-  )
+  const document = await dataService.getDocumentById(tenantId, collection, id)
   res.json(document)
 })
 
 // Update document by ID
 router.put("/:collection/:id", async (req, res) => {
-  const { tenantId, dbName } = req.user
+  const { tenantId } = req.user
   const { collection, id } = req.params
 
   const ejson = req.body
 
   const result = await dataService.updateDocumentById(
     tenantId,
-    dbName,
     collection,
     id,
     ejson
@@ -114,15 +101,10 @@ router.put("/:collection/:id", async (req, res) => {
 
 // Delete document by ID
 router.delete("/:collection/:id", async (req, res) => {
-  const { tenantId, dbName } = req.user
+  const { tenantId } = req.user
   const { collection, id } = req.params
 
-  const result = await dataService.deleteDocumentById(
-    tenantId,
-    dbName,
-    collection,
-    id
-  )
+  const result = await dataService.deleteDocumentById(tenantId, collection, id)
 
   res.json(result)
 })

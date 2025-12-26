@@ -5,7 +5,6 @@ global {
       user: {
         userId: string
         tenantId: string
-        dbName: string
       }
     }
   }

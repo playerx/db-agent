@@ -7,7 +7,6 @@ import { managerDb } from "../db.ts"
 class PromptService {
   async executePrompt(
     tenantId: string,
-    dbName: string,
     prompt: string,
     cb?: (step: string, content: string) => void
   ) {
@@ -30,16 +29,16 @@ class PromptService {
         context: {
           referenceId,
           tenantId,
-          dbName,
         },
       }
     )) {
-      const [step, content] = Object.entries(chunk)[0]
+      const [step, content] = Object.entries(chunk)[0]!
 
-      const contentData =
-        typeof content.messages[0].content === "object"
+      const contentData = (
+        typeof content.messages[0]?.content === "object"
           ? JSON.stringify(content.messages[0].content)
-          : content.messages[0].content.toString()
+          : content.messages[0]?.content.toString()
+      ) as string
 
       debugLog.push({
         index: ++i,
@@ -48,15 +47,15 @@ class PromptService {
       })
 
       cb?.(
-        step === "tools" ? `${content.messages[0].name} (tool)` : step,
+        step === "tools" ? `${content.messages[0]?.name} (tool)` : step,
         contentData
       )
 
       if (
-        (content.messages[0].response_metadata as any)?.stop_reason ===
+        (content.messages[0]?.response_metadata as any)?.stop_reason ===
         "end_turn"
       ) {
-        promptResult = content.messages[0].content.toString()
+        promptResult = content.messages[0]!.content.toString()
         break
       }
     }

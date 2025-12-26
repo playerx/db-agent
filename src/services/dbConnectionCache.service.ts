@@ -1,37 +1,41 @@
-import { MongoClient } from "mongodb"
+import { MongoClient, type Db } from "mongodb"
 import { AppError } from "../common/appError.ts"
 import { tenantService } from "./tenant.service.ts"
 
 class DbConnectionCache {
-  private dbConnectionCache = new Map<string, MongoClient>()
+  private dbConnectionCache = new Map<string, { client: MongoClient; db: Db }>()
 
-  async get(tenantId: string) {
-    let client = this.dbConnectionCache.get(tenantId)
-    if (!client) {
+  async getDb(tenantId: string) {
+    let cache = this.dbConnectionCache.get(tenantId)
+    if (!cache) {
       const tenant = await tenantService.get(tenantId)
       if (!tenant) {
+        // if (tenant === 'demo')
         throw new AppError("Tenant not found")
       }
 
       // TODO: decrypt
       const dbConnectionString = tenant.encryptedDbConnectionString
 
-      client = await new MongoClient(dbConnectionString).connect()
+      const client = await new MongoClient(dbConnectionString).connect()
+      const db = client.db(tenant.dbName)
 
-      this.dbConnectionCache.set(tenantId, client)
+      cache = { client, db }
+
+      this.dbConnectionCache.set(tenantId, cache)
     }
 
-    return client
+    return cache
   }
 
   async remove(tenantId: string) {
-    let client = this.dbConnectionCache.get(tenantId)
-    if (!client) {
+    let cache = this.dbConnectionCache.get(tenantId)
+    if (!cache) {
       return
     }
 
     try {
-      await client.close(true)
+      await cache.client.close(true)
     } finally {
       this.dbConnectionCache.delete(tenantId)
     }

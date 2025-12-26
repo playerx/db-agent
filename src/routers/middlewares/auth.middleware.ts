@@ -1,12 +1,18 @@
-import type { Request } from "express"
+import type { NextFunction, Request } from "express"
 
-export const authMiddleware = (_: Error, req: Request) => {
-  const tenantId = (req.headers.tenantId || "demo") as string
-  const dbName = (req.headers.dbName || "") as string
+export const authMiddleware = (
+  req: Request,
+  __: Response,
+  next: NextFunction
+) => {
+  const tenantId = (req.header("tenantId") || "demo") as string
 
   req.user = {
     userId: "u1",
     tenantId,
-    dbName,
   }
+
+  console.log(req.user)
+
+  return next()
 }

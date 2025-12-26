@@ -1,11 +1,11 @@
 import { MongoClient, type ObjectId } from "mongodb"
 
-const MONGO_CONNECTION_STRING = process.env["MONGO_CONNECTION_STRING"]
-if (!MONGO_CONNECTION_STRING) {
-  throw new Error("Please provide MONGO_CONNECTION_STRING env variable")
+const MANAGER_DB_CONNECTION_STRING = process.env["MANAGER_DB_CONNECTION_STRING"]
+if (!MANAGER_DB_CONNECTION_STRING) {
+  throw new Error("Please provide MANAGER_DB_CONNECTION_STRING env variable")
 }
 
-const client = await new MongoClient(MONGO_CONNECTION_STRING).connect()
+const client = await new MongoClient(MANAGER_DB_CONNECTION_STRING).connect()
 
 export const mongoDb = client.db()
 
@@ -17,15 +17,10 @@ export const managerDb = {
 
 export type TenantDb = {
   encryptedDbConnectionString: string
+  dbName: string
 
   displayConfig: {
-    [collectionName: string]: (
-      | {
-          type: "field"
-          field: string
-        }
-      | { type: "pattern"; pattern: string }
-    )[]
+    [collectionName: string]: string[]
   }
 }
 
