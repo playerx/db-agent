@@ -1,11 +1,13 @@
 import { Router } from "express"
 import { AppError } from "../common/appError.ts"
 import { tenantService } from "../services/tenant.service.ts"
+import { authMiddleware } from "./middlewares/auth.middleware.ts"
 
-const router = Router()
+const router = Router().use(authMiddleware as any)
 
 router.get("/", async (req, res) => {
-  const tenants = await tenantService.list()
+  const { userId } = req.user
+  const tenants = await tenantService.list(userId)
 
   const safeTenants = tenants.map((tenant) => ({
     id: tenant._id.toHexString(),
@@ -17,6 +19,7 @@ router.get("/", async (req, res) => {
 })
 
 router.post("/", async (req, res) => {
+  const { userId } = req.user
   const { dbConnectionString, dbName, displayConfig } = req.body
 
   if (!dbConnectionString) {
@@ -34,6 +37,7 @@ router.post("/", async (req, res) => {
   }
 
   const tenant = await tenantService.create({
+    userId,
     dbConnectionString,
     dbName,
     displayConfig,
@@ -46,6 +50,23 @@ router.post("/", async (req, res) => {
       displayConfig: tenant.displayConfig,
     },
   })
+})
+
+router.delete("/:id", async (req, res) => {
+  const { userId } = req.user
+  const { id } = req.params
+
+  if (!id) {
+    throw new AppError("Please provide tenant id")
+  }
+
+  const deleted = await tenantService.delete(id, userId)
+
+  if (!deleted) {
+    throw new AppError("Tenant not found or you don't have permission to delete it")
+  }
+
+  res.json({ success: true })
 })
 
 export default router

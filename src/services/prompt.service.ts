@@ -88,12 +88,13 @@ class PromptService {
   }
 
   async listPromptLogs(
+    tenantId: string,
     skip: number = 0,
     limit: number = 10,
     showDebug = false
   ) {
     const data = await managerDb.promptLog
-      .find({}, { projection: showDebug ? undefined : { debug: 0 } })
+      .find({ tenantId }, { projection: showDebug ? undefined : { debug: 0 } })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)

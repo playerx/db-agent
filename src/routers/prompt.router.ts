@@ -48,7 +48,8 @@ router.get("/", async (req, res) => {
 
 // List all prompt logs with pagination
 router.get("/log/", async (req, res) => {
-  console.log(-1)
+  const { tenantId } = req.user
+
   const { skip, limit } = req.query
 
   // Parse pagination parameters
@@ -65,7 +66,7 @@ router.get("/log/", async (req, res) => {
       .json({ error: "Invalid limit parameter (must be between 1 and 100)" })
   }
 
-  const result = await promptService.listPromptLogs(skipNum, limitNum)
+  const result = await promptService.listPromptLogs(tenantId, skipNum, limitNum)
 
   res.json(result)
 })

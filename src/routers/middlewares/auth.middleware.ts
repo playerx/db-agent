@@ -5,14 +5,19 @@ export const authMiddleware = (
   __: Response,
   next: NextFunction
 ) => {
-  const tenantId = (req.header("tenantId") || "demo") as string
+  let tenantId: string | null = req.header("x-tenant-id") as string
+  if (!tenantId) {
+    tenantId = req.query["x-tenant-id"] as string
+  }
+
+  if (!tenantId) {
+    tenantId = "demo"
+  }
 
   req.user = {
     userId: "u1",
     tenantId,
   }
-
-  console.log(req.user)
 
   return next()
 }

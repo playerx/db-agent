@@ -12,6 +12,7 @@ class TenantService {
           DEMO_DB_CONNECTION_STRING!
         ),
         dbName: "demo",
+        userId: "",
         displayConfig: {
           default: ["name"],
           users: ["name", "email"],
@@ -23,12 +24,15 @@ class TenantService {
     return res
   }
 
-  async list() {
-    const tenants = await managerDb.tenants.find({}).toArray()
+  async list(userId: string) {
+    const tenants = await managerDb.tenants
+      .find({ $or: [{ userId: "" }, { userId }] })
+      .toArray()
     return tenants
   }
 
   async create(data: {
+    userId: string
     dbConnectionString: string
     dbName: string
     displayConfig: { [collectionName: string]: string[] }
@@ -36,6 +40,7 @@ class TenantService {
     const result = await managerDb.tenants.insertOne({
       encryptedDbConnectionString: encryption.encrypt(data.dbConnectionString),
       dbName: data.dbName,
+      userId: data.userId,
       displayConfig: data.displayConfig,
     })
 
@@ -43,6 +48,15 @@ class TenantService {
       _id: result.insertedId,
       ...data,
     }
+  }
+
+  async delete(tenantId: string, userId: string) {
+    const result = await managerDb.tenants.deleteOne({
+      _id: new ObjectId(tenantId),
+      userId,
+    })
+
+    return result.deletedCount > 0
   }
 }
 
