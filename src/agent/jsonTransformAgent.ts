@@ -6,9 +6,9 @@ import {
 } from "./jsonTransformTools.ts"
 
 export const jsonTransformAgent = createAgent({
-  // model: "claude-sonnet-4-5-20250929",
+  model: "claude-sonnet-4-5-20250929",
   // model: "google-genai:gemini-2.0-flash-001",
-  model: "google-genai:gemini-2.5-pro",
+  // model: "google-genai:gemini-2.5-pro",
   tools: [analyzeJson, transformJson, validateTransformation],
   systemPrompt: `You are a JSON transformation assistant. Your role is to:
 1. Analyze the input JSON structure to understand its format
