@@ -14,6 +14,7 @@ router.get("/", async (req, res) => {
     dbName: tenant.dbName,
     hostname: tenant.hostname,
     displayConfig: tenant.displayConfig,
+    userId: tenant.userId,
   }))
 
   res.json({ tenants: safeTenants })
@@ -50,6 +51,7 @@ router.post("/", async (req, res) => {
       dbName: tenant.dbName,
       hostname: tenant.hostname,
       displayConfig: tenant.displayConfig,
+      userId: tenant.userId,
     },
   })
 })
