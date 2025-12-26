@@ -55,18 +55,23 @@ class PromptService {
     const queries = runQueryCache.get(referenceId) ?? []
 
     runQueryCache.delete(referenceId)
+    let entryId: string = crypto.randomUUID()
 
-    const { insertedId } = await db.promptLog.insertOne({
-      prompt,
-      result: promptResult,
-      queries,
-      debug: { messages: debugLog },
-      lastUsedAt: new Date(),
-      timestamp: new Date(),
-    })
+    if (queries.length) {
+      const { insertedId } = await db.promptLog.insertOne({
+        prompt,
+        result: promptResult,
+        queries,
+        debug: { messages: debugLog },
+        lastUsedAt: new Date(),
+        timestamp: new Date(),
+      })
+
+      entryId = insertedId.toHexString()
+    }
 
     return {
-      id: insertedId.toHexString(),
+      id: entryId,
       promptResult,
       queries,
       debug: debugLog,
