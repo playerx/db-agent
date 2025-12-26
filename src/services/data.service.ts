@@ -151,6 +151,8 @@ class DataService {
       if (x.includes(".find(") && x.includes(".toArray(")) {
         return res.map((x: any) => EJSON.serialize(x))
       }
+
+      return res
     })
 
     const results = await Promise.all(tasks)
