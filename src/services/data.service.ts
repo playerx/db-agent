@@ -3,15 +3,32 @@ import { ObjectId } from "mongodb"
 import { createQuery } from "odata-v4-mongodb"
 import { AppError } from "../common/appError.ts"
 import { createDbProxy, run } from "../common/helpers.ts"
-import { db, mongoDb } from "../db.ts"
+import { managerDb } from "../db.ts"
+import { dbConnectionCache } from "./dbConnectionCache.service.ts"
 
 class DataService {
-  async listCollections() {
-    const collections = await mongoDb.listCollections().toArray()
+  async listDatabases(tenantId: string) {
+    const client = await dbConnectionCache.get(tenantId)
+    const res = await client.db().admin().listDatabases()
+
+    return res.databases.map((x) => x.name)
+  }
+
+  async listCollections(tenantId: string, dbName: string) {
+    const client = await dbConnectionCache.get(tenantId)
+    const db = client.db(dbName)
+
+    const collections = await db.listCollections().toArray()
+
     return collections.map((col) => col.name)
   }
 
-  async getDocuments(collection: string, odataQuery: string) {
+  async getDocuments(
+    tenantId: string,
+    dbName: string,
+    collection: string,
+    odataQuery: string
+  ) {
     const {
       query: filters,
       projection,
@@ -20,7 +37,10 @@ class DataService {
       limit = 20,
     } = odataQuery ? createQuery(odataQuery) : {}
 
-    const documents = await mongoDb
+    const client = await dbConnectionCache.get(tenantId)
+    const db = client.db(dbName)
+
+    const documents = await db
       .collection(collection)
       .find(filters, projection)
       .sort(sort)
@@ -39,17 +59,33 @@ class DataService {
     }
   }
 
-  async getDocumentCount(collection: string, odataQuery: string) {
+  async getDocumentCount(
+    tenantId: string,
+    dbName: string,
+    collection: string,
+    odataQuery: string
+  ) {
     const { query: filters } = odataQuery ? createQuery(odataQuery) : {}
 
-    const count = await mongoDb.collection(collection).countDocuments(filters)
+    const client = await dbConnectionCache.get(tenantId)
+    const db = client.db(dbName)
+
+    const count = await db.collection(collection).countDocuments(filters)
 
     return {
       count,
     }
   }
 
-  async getDocumentById(collection: string, id: string) {
+  async getDocumentById(
+    tenantId: string,
+    dbName: string,
+    collection: string,
+    id: string
+  ) {
+    const client = await dbConnectionCache.get(tenantId)
+    const db = client.db(dbName)
+
     let itemId: any = id
 
     if (id.length === 24) {
@@ -58,9 +94,7 @@ class DataService {
       } catch {}
     }
 
-    const document = await mongoDb
-      .collection(collection)
-      .findOne({ _id: itemId })
+    const document = await db.collection(collection).findOne({ _id: itemId })
 
     if (!document) {
       throw new AppError("Document not found")
@@ -70,10 +104,15 @@ class DataService {
   }
 
   async updateDocumentById(
+    tenantId: string,
+    dbName: string,
     collection: string,
     id: string,
     bsonData: Record<string, unknown>
   ) {
+    const client = await dbConnectionCache.get(tenantId)
+    const db = client.db(dbName)
+
     let itemId: any = id
 
     if (id.length === 24) {
@@ -84,7 +123,7 @@ class DataService {
 
     const { _id, ...updateData } = EJSON.deserialize(bsonData)
 
-    const result = await mongoDb
+    const result = await db
       .collection(collection)
       .findOneAndUpdate(
         { _id: itemId },
@@ -96,8 +135,9 @@ class DataService {
       throw new AppError("Document not found")
     }
 
-    await db.eventLog.insertOne({
+    await managerDb.eventLog.insertOne({
       type: "UPDATE",
+      tenantId,
       collection,
       id: itemId,
       result,
@@ -108,7 +148,15 @@ class DataService {
     return EJSON.serialize(result)
   }
 
-  async deleteDocumentById(collection: string, id: string) {
+  async deleteDocumentById(
+    tenantId: string,
+    dbName: string,
+    collection: string,
+    id: string
+  ) {
+    const client = await dbConnectionCache.get(tenantId)
+    const db = client.db(dbName)
+
     let itemId: any = id
 
     if (id.length === 24) {
@@ -117,16 +165,15 @@ class DataService {
       } catch {}
     }
 
-    const result = await mongoDb
-      .collection(collection)
-      .deleteOne({ _id: itemId })
+    const result = await db.collection(collection).deleteOne({ _id: itemId })
 
     if (result.deletedCount === 0) {
       throw new AppError("Document not found")
     }
 
-    await db.eventLog.insertOne({
+    await managerDb.eventLog.insertOne({
       type: "DELETE",
+      tenantId,
       collection,
       id: new ObjectId(id),
       result,
@@ -136,12 +183,20 @@ class DataService {
     return { success: true, deletedCount: result.deletedCount }
   }
 
-  async runQueries(queries: string[], promptLogId: string) {
+  async runQueries(
+    tenantId: string,
+    dbName: string,
+    queries: string[],
+    promptLogId: string
+  ) {
+    const client = await dbConnectionCache.get(tenantId)
+    const db = client.db(dbName)
+
     const finalQueries = queries.map((x) => x.replaceAll("\n", " ").trim())
 
     const tasks = finalQueries.map(async (x) => {
       const res = await run(x, {
-        db: createDbProxy(mongoDb),
+        db: createDbProxy(db),
       })
 
       if (x.includes(".findOne(")) {
@@ -157,15 +212,16 @@ class DataService {
 
     const results = await Promise.all(tasks)
 
-    await db.eventLog.insertOne({
+    await managerDb.eventLog.insertOne({
       type: "QUERY",
+      tenantId,
       queries: finalQueries,
       results: results.map((x) => (Array.isArray(x) ? x.length : x)),
       promptLogId,
       timestamp: new Date(),
     })
 
-    await db.promptLog.updateOne(
+    await managerDb.promptLog.updateOne(
       { _id: new ObjectId(promptLogId) },
       {
         $set: {

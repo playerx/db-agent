@@ -1,10 +1,13 @@
 import { tool } from "langchain"
 import * as z from "zod"
-import { mongoDb } from "../db.ts"
+import { dbConnectionCache } from "../services/dbConnectionCache.service.ts"
 
 export const getSampleDoc = tool(
-  async (input) => {
-    const res = await mongoDb
+  async (input, runtime) => {
+    const client = await dbConnectionCache.get(runtime.metadata.tenantId)
+    const db = client.db(runtime.metadata.dbName)
+
+    const res = await db
       .collection(input.collectionName)
       .aggregate([{ $sample: { size: 1 } }])
       .toArray()

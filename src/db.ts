@@ -9,12 +9,29 @@ const client = await new MongoClient(MONGO_CONNECTION_STRING).connect()
 
 export const mongoDb = client.db()
 
-export const db = {
-  promptLog: mongoDb.collection<PromptLogDb>("ai.promptLog"),
-  eventLog: mongoDb.collection<EventLogDb>("ai.eventLog"),
+export const managerDb = {
+  tenants: mongoDb.collection<TenantDb>("tenants"),
+  promptLog: mongoDb.collection<PromptLogDb>("promptLog"),
+  eventLog: mongoDb.collection<EventLogDb>("eventLog"),
+}
+
+export type TenantDb = {
+  encryptedDbConnectionString: string
+
+  displayConfig: {
+    [collectionName: string]: (
+      | {
+          type: "field"
+          field: string
+        }
+      | { type: "pattern"; pattern: string }
+    )[]
+  }
 }
 
 export type PromptLogDb = {
+  tenantId: string
+
   prompt: string
   result: string
   queries: string[]
@@ -31,20 +48,21 @@ export type PromptLogDb = {
   timestamp: Date
 }
 
-export type EventLogDb =
+export type EventLogDb = {
+  tenantId: string
+  timestamp: Date
+} & (
   | {
       type: "QUERY"
       queries: string[]
       results: string[]
       promptLogId: string
-      timestamp: Date
     }
   | {
       type: "DELETE"
       collection: string
       id: string | ObjectId
       result: any
-      timestamp: Date
     }
   | {
       type: "UPDATE"
@@ -52,5 +70,5 @@ export type EventLogDb =
       id: string | ObjectId
       data: any
       result: any
-      timestamp: Date
     }
+)

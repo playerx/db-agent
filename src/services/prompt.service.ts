@@ -2,10 +2,12 @@ import { ObjectId } from "mongodb"
 import { mongoAgent } from "../agent/mongoAgent.ts"
 import { runQueryCache } from "../agent/tools.ts"
 import { AppError } from "../common/appError.ts"
-import { db } from "../db.ts"
+import { managerDb } from "../db.ts"
 
 class PromptService {
   async executePrompt(
+    tenantId: string,
+    dbName: string,
     prompt: string,
     cb?: (step: string, content: string) => void
   ) {
@@ -23,7 +25,14 @@ class PromptService {
       {
         messages: [prompt],
       },
-      { streamMode: "updates", context: { referenceId } }
+      {
+        streamMode: "updates",
+        context: {
+          referenceId,
+          tenantId,
+          dbName,
+        },
+      }
     )) {
       const [step, content] = Object.entries(chunk)[0]
 
@@ -58,9 +67,10 @@ class PromptService {
     let entryId: string = crypto.randomUUID()
 
     if (queries.length) {
-      const { insertedId } = await db.promptLog.insertOne({
+      const { insertedId } = await managerDb.promptLog.insertOne({
         prompt,
         result: promptResult,
+        tenantId,
         queries,
         debug: { messages: debugLog },
         lastUsedAt: new Date(),
@@ -83,14 +93,14 @@ class PromptService {
     limit: number = 10,
     showDebug = false
   ) {
-    const data = await db.promptLog
+    const data = await managerDb.promptLog
       .find({}, { projection: showDebug ? undefined : { debug: 0 } })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)
       .toArray()
 
-    const total = await db.promptLog.countDocuments()
+    const total = await managerDb.promptLog.countDocuments()
 
     return {
       data,
@@ -108,7 +118,7 @@ class PromptService {
       throw new AppError("Invalid prompt log ID format")
     }
 
-    const log = await db.promptLog.findOne(
+    const log = await managerDb.promptLog.findOne(
       { _id: new ObjectId(id) },
       { projection: showDebug ? undefined : { debug: 0 } }
     )
@@ -125,7 +135,9 @@ class PromptService {
       throw new AppError("Invalid prompt log ID format")
     }
 
-    const result = await db.promptLog.deleteOne({ _id: new ObjectId(id) })
+    const result = await managerDb.promptLog.deleteOne({
+      _id: new ObjectId(id),
+    })
 
     if (result.deletedCount === 0) {
       throw new AppError("Prompt log not found")

@@ -1,7 +1,8 @@
 import { Router } from "express"
 import { jsonTransformService } from "../services/jsonTransform.service.ts"
+import { authMiddleware } from "./middlewares/auth.middleware.ts"
 
-const router = Router()
+const router = Router().use(authMiddleware)
 
 // Transform JSON using AI agent
 router.post("/", async (req, res) => {

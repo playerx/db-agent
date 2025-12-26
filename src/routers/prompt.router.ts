@@ -1,10 +1,12 @@
 import { Router } from "express"
 import { promptService } from "../services/prompt.service.ts"
+import { authMiddleware } from "./middlewares/auth.middleware.ts"
 
-const router = Router()
+const router = Router().use(authMiddleware)
 
 // Execute prompt using AI agent
 router.get("/", async (req, res) => {
+  const { tenantId, dbName } = req.user
   const { prompt } = req.query
 
   // Set up Server-Sent Events (SSE) for streaming
@@ -14,6 +16,8 @@ router.get("/", async (req, res) => {
 
   try {
     const result = await promptService.executePrompt(
+      tenantId,
+      dbName,
       prompt!.toString(),
       (step, content) => {
         // Stream each update to the client
