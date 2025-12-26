@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb"
 import { encryption } from "../common/encryption.ts"
+import { getHostnameFromMongoURI } from "../common/getHostnameFromMongoURI.ts"
 import { managerDb, type TenantDb } from "../db.ts"
 
 const { DEMO_DB_CONNECTION_STRING } = process.env
@@ -12,6 +13,7 @@ class TenantService {
           DEMO_DB_CONNECTION_STRING!
         ),
         dbName: "demo",
+        hostname: "local",
         userId: "",
         displayConfig: {
           default: ["name"],
@@ -37,9 +39,12 @@ class TenantService {
     dbName: string
     displayConfig: { [collectionName: string]: string[] }
   }) {
+    const hostname = getHostnameFromMongoURI(data.dbConnectionString)
+
     const result = await managerDb.tenants.insertOne({
       encryptedDbConnectionString: encryption.encrypt(data.dbConnectionString),
       dbName: data.dbName,
+      hostname,
       userId: data.userId,
       displayConfig: data.displayConfig,
     })
@@ -47,6 +52,7 @@ class TenantService {
     return {
       _id: result.insertedId,
       ...data,
+      hostname,
     }
   }
 

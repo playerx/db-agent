@@ -12,6 +12,7 @@ router.get("/", async (req, res) => {
   const safeTenants = tenants.map((tenant) => ({
     id: tenant._id.toHexString(),
     dbName: tenant.dbName,
+    hostname: tenant.hostname,
     displayConfig: tenant.displayConfig,
   }))
 
@@ -47,6 +48,7 @@ router.post("/", async (req, res) => {
     tenant: {
       id: tenant._id.toHexString(),
       dbName: tenant.dbName,
+      hostname: tenant.hostname,
       displayConfig: tenant.displayConfig,
     },
   })
@@ -63,7 +65,9 @@ router.delete("/:id", async (req, res) => {
   const deleted = await tenantService.delete(id, userId)
 
   if (!deleted) {
-    throw new AppError("Tenant not found or you don't have permission to delete it")
+    throw new AppError(
+      "Tenant not found or you don't have permission to delete it"
+    )
   }
 
   res.json({ success: true })

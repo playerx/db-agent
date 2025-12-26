@@ -17,6 +17,7 @@ export const managerDb = {
 
 export type TenantDb = {
   encryptedDbConnectionString: string
+  hostname: string
   dbName: string
   userId: string
 
