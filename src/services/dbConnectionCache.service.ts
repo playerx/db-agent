@@ -1,5 +1,6 @@
 import { MongoClient, type Db } from "mongodb"
 import { AppError } from "../common/appError.ts"
+import { encryption } from "../common/encryption.ts"
 import { tenantService } from "./tenant.service.ts"
 
 class DbConnectionCache {
@@ -14,8 +15,7 @@ class DbConnectionCache {
         throw new AppError("Tenant not found")
       }
 
-      // TODO: decrypt
-      const dbConnectionString = tenant.encryptedDbConnectionString
+      const dbConnectionString = encryption.decrypt(tenant.encryptedDbConnectionString)
 
       const client = await new MongoClient(dbConnectionString).connect()
       const db = client.db(tenant.dbName)
