@@ -4,7 +4,10 @@ import { dbConnectionCache } from "../services/dbConnectionCache.service.ts"
 
 export const getSampleDoc = tool(
   async (input, runtime) => {
-    const { db } = await dbConnectionCache.getDb(runtime.metadata.tenantId)
+    const { db } = await dbConnectionCache.getDb(
+      runtime.metadata.tenantId,
+      runtime.metadata.userId
+    )
 
     const res = await db
       .collection(input.collectionName)

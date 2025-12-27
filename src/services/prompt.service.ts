@@ -7,6 +7,7 @@ import { managerDb } from "../db.ts"
 class PromptService {
   async executePrompt(
     tenantId: string,
+    userId: string,
     prompt: string,
     cb?: (step: string, content: string) => void
   ) {
@@ -29,6 +30,7 @@ class PromptService {
         context: {
           referenceId,
           tenantId,
+          userId,
         },
       }
     )) {

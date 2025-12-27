@@ -7,22 +7,27 @@ import { managerDb } from "../db.ts"
 import { dbConnectionCache } from "./dbConnectionCache.service.ts"
 
 class DataService {
-  async listDatabases(tenantId: string) {
-    const { db } = await dbConnectionCache.getDb(tenantId)
+  async listDatabases(tenantId: string, userId: string) {
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
     const res = await db.admin().listDatabases()
 
     return res.databases.map((x) => x.name)
   }
 
-  async listCollections(tenantId: string) {
-    const { db } = await dbConnectionCache.getDb(tenantId)
+  async listCollections(tenantId: string, userId: string) {
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
 
     const collections = await db.listCollections().toArray()
 
     return collections.map((col) => col.name)
   }
 
-  async getDocuments(tenantId: string, collection: string, odataQuery: string) {
+  async getDocuments(
+    tenantId: string,
+    userId: string,
+    collection: string,
+    odataQuery: string
+  ) {
     const {
       query: filters,
       projection,
@@ -31,7 +36,7 @@ class DataService {
       limit = 20,
     } = odataQuery ? createQuery(odataQuery) : {}
 
-    const { db } = await dbConnectionCache.getDb(tenantId)
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
 
     const documents = await db
       .collection(collection)
@@ -54,12 +59,13 @@ class DataService {
 
   async getDocumentCount(
     tenantId: string,
+    userId: string,
     collection: string,
     odataQuery: string
   ) {
     const { query: filters } = odataQuery ? createQuery(odataQuery) : {}
 
-    const { db } = await dbConnectionCache.getDb(tenantId)
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
 
     const count = await db.collection(collection).countDocuments(filters)
 
@@ -68,8 +74,13 @@ class DataService {
     }
   }
 
-  async getDocumentById(tenantId: string, collection: string, id: string) {
-    const { db } = await dbConnectionCache.getDb(tenantId)
+  async getDocumentById(
+    tenantId: string,
+    userId: string,
+    collection: string,
+    id: string
+  ) {
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
 
     let itemId: any = id
 
@@ -90,11 +101,12 @@ class DataService {
 
   async updateDocumentById(
     tenantId: string,
+    userId: string,
     collection: string,
     id: string,
     bsonData: Record<string, unknown>
   ) {
-    const { db } = await dbConnectionCache.getDb(tenantId)
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
 
     let itemId: any = id
 
@@ -131,8 +143,13 @@ class DataService {
     return EJSON.serialize(result)
   }
 
-  async deleteDocumentById(tenantId: string, collection: string, id: string) {
-    const { db } = await dbConnectionCache.getDb(tenantId)
+  async deleteDocumentById(
+    tenantId: string,
+    userId: string,
+    collection: string,
+    id: string
+  ) {
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
 
     let itemId: any = id
 
@@ -160,8 +177,13 @@ class DataService {
     return { success: true, deletedCount: result.deletedCount }
   }
 
-  async runQueries(tenantId: string, queries: string[], promptLogId: string) {
-    const { db } = await dbConnectionCache.getDb(tenantId)
+  async runQueries(
+    tenantId: string,
+    userId: string,
+    queries: string[],
+    promptLogId: string
+  ) {
+    const { db } = await dbConnectionCache.getDb(tenantId, userId)
 
     const finalQueries = queries.map((x) => x.replaceAll("\n", " ").trim())
 

@@ -33,11 +33,11 @@ export const verifyAuthToken = (jwtToken: string | undefined) => {
       return null
     }
   } catch (err) {
-    console.debug("error on jwt verification process", err)
+    // console.debug("error on jwt verification process", err)
   }
 
   if (!jwtData) {
-    console.debug("jwt data is null", jwtToken)
+    // console.debug("jwt data is null", jwtToken)
     return null
   }
 

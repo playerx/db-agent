@@ -31,7 +31,7 @@ async function validateMongoConnection(
 }
 
 class TenantService {
-  async get(tenantId: string) {
+  async get(tenantId: string, userId: string) {
     if (tenantId === "demo") {
       return {
         encryptedDbConnectionString: encryption.encrypt(
@@ -46,7 +46,11 @@ class TenantService {
         },
       } as TenantDb
     }
-    const res = await managerDb.tenants.findOne({ _id: new ObjectId(tenantId) })
+
+    const res = await managerDb.tenants.findOne({
+      _id: new ObjectId(tenantId),
+      userId,
+    })
 
     return res
   }

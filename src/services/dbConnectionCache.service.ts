@@ -6,16 +6,17 @@ import { tenantService } from "./tenant.service.ts"
 class DbConnectionCache {
   private dbConnectionCache = new Map<string, { client: MongoClient; db: Db }>()
 
-  async getDb(tenantId: string) {
+  async getDb(tenantId: string, userId: string) {
     let cache = this.dbConnectionCache.get(tenantId)
     if (!cache) {
-      const tenant = await tenantService.get(tenantId)
+      const tenant = await tenantService.get(tenantId, userId)
       if (!tenant) {
-        // if (tenant === 'demo')
         throw new AppError("Tenant not found")
       }
 
-      const dbConnectionString = encryption.decrypt(tenant.encryptedDbConnectionString)
+      const dbConnectionString = encryption.decrypt(
+        tenant.encryptedDbConnectionString
+      )
 
       const client = await new MongoClient(dbConnectionString).connect()
       const db = client.db(tenant.dbName)

@@ -6,7 +6,7 @@ const router = Router().use(authMiddleware as any)
 
 // Execute prompt using AI agent
 router.get("/", async (req, res) => {
-  const { tenantId } = req.user
+  const { tenantId, userId } = req.user
   const { prompt } = req.query
 
   // Set up Server-Sent Events (SSE) for streaming
@@ -17,6 +17,7 @@ router.get("/", async (req, res) => {
   try {
     const result = await promptService.executePrompt(
       tenantId,
+      userId,
       prompt!.toString(),
       (step, content) => {
         // Stream each update to the client
