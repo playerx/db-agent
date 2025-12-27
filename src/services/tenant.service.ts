@@ -1,9 +1,34 @@
-import { ObjectId } from "mongodb"
+import { MongoClient, ObjectId } from "mongodb"
+import { AppError } from "../common/appError.ts"
 import { encryption } from "../common/encryption.ts"
 import { getHostnameFromMongoURI } from "../common/getHostnameFromMongoURI.ts"
 import { managerDb, type TenantDb } from "../db.ts"
 
 const { DEMO_DB_CONNECTION_STRING } = process.env
+
+async function validateMongoConnection(
+  connectionString: string,
+  dbName: string
+): Promise<void> {
+  let client: MongoClient | null = null
+  try {
+    client = new MongoClient(connectionString)
+    await client.connect()
+
+    // Try to access the database to ensure it exists and is accessible
+    const db = client.db(dbName)
+    await db.admin().ping()
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new AppError(`Invalid database connection: ${error.message}`)
+    }
+    throw new AppError("Invalid database connection: Unable to connect")
+  } finally {
+    if (client) {
+      await client.close()
+    }
+  }
+}
 
 class TenantService {
   async get(tenantId: string) {
@@ -39,6 +64,9 @@ class TenantService {
     dbName: string
     displayConfig: { [collectionName: string]: string[] }
   }) {
+    // Validate connection before creating tenant
+    await validateMongoConnection(data.dbConnectionString, data.dbName)
+
     const hostname = getHostnameFromMongoURI(data.dbConnectionString)
 
     const result = await managerDb.tenants.insertOne({
