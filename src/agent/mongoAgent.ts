@@ -19,9 +19,9 @@ IMPORTANT CONSTRAINTS:
 
 REQUIRED PRACTICES:
 - Always maintain createdAt and updatedAt timestamp fields for every collection entry
-- Always track document version (__v field) and increment it using $inc on every update operation
 - For find queries, always append .toArray() at the end to return results as an array
 - Use proper MongoDB operators: $set, $inc, $push, $pull, $match, $group, etc.
+- Always use English for collection names
 
 QUERY GENERATION GUIDELINES:
 - Ensure all queries are syntactically correct MongoDB operations
