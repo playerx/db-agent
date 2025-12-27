@@ -8,6 +8,9 @@ primary_region = 'ams'
 
 [build]
 
+[env]
+JWT_PUBLIC_KEY = "ACBGTFCXEVAIW5FP774H2AWMTYITBWLLRWIXIBYG75D4CNPQ33BA3ZHN"
+
 [http_service]
 internal_port = 3000
 force_https = true

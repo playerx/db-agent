@@ -52,9 +52,7 @@ class TenantService {
   }
 
   async list(userId: string) {
-    const tenants = await managerDb.tenants
-      .find({ $or: [{ userId: "" }, { userId }] })
-      .toArray()
+    const tenants = await managerDb.tenants.find({ userId }).toArray()
     return tenants
   }
 
