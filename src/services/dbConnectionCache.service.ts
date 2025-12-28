@@ -11,7 +11,7 @@ class DbConnectionCache {
     if (!cache) {
       const tenant = await tenantService.get(tenantId, userId)
       if (!tenant) {
-        throw new AppError("Tenant not found")
+        throw new AppError("Tenant not found - " + tenantId)
       }
 
       const dbConnectionString = encryption.decrypt(
