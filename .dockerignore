@@ -1,2 +1,11 @@
 .env
 node_modules
+.git
+.gitignore
+README.md
+.github
+fly.toml
+.dockerignore
+Dockerfile
+npm-debug.log
+.DS_Store
